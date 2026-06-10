@@ -12,7 +12,9 @@ import yaml
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
-from .config import DB_PATH, ROOT
+from .config import (
+    DB_PATH, ROOT, get_runtime_interval, request_run_now, set_runtime_interval,
+)
 from .evaluation import evaluate_demo
 from .journal import Journal
 
@@ -207,6 +209,33 @@ def calibration(mode: str | None = None):
     if not DB_PATH.exists():
         return {}
     return Journal(DB_PATH).confidence_calibration(mode)
+
+
+@app.get("/api/runtime")
+def runtime_get():
+    """Intervalo atual do ciclo (min) — o que o agente está usando."""
+    default = int(_raw_config().get("interval_minutes", 15))
+    return {"interval_minutes": get_runtime_interval(default)}
+
+
+@app.post("/api/runtime")
+def runtime_set(payload: dict):
+    """Define o intervalo do ciclo (mínimo 1 min). O agente aplica no próximo passo."""
+    minutes = payload.get("interval_minutes")
+    if minutes is None:
+        return {"error": "interval_minutes é obrigatório"}
+    try:
+        saved = set_runtime_interval(int(minutes))
+    except (ValueError, TypeError):
+        return {"error": "interval_minutes inválido"}
+    return {"interval_minutes": saved}
+
+
+@app.post("/api/run-now")
+def run_now():
+    """Pede ao agente um ciclo imediato (sem esperar o intervalo)."""
+    request_run_now()
+    return {"requested": True}
 
 
 @app.get("/api/keys/status")

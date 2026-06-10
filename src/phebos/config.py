@@ -1,5 +1,6 @@
 """Carrega config.yaml + .env e aplica a trava de segurança do modo real."""
 
+import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -15,8 +16,12 @@ KILL_FILE = DATA_DIR / "KILL"
 DB_PATH = DATA_DIR / "phebos.db"
 # Chaves salvas pelo dashboard (aba Conexões) — têm prioridade sobre o .env
 SECRETS_FILE = DATA_DIR / "secrets.env"
+# Controle do ciclo pelo dashboard: intervalo dinâmico e pedido de "rodar agora"
+RUNTIME_FILE = DATA_DIR / "runtime.json"
+RUN_NOW_FILE = DATA_DIR / "RUN_NOW"
 
 LIVE_CONFIRMATION = "EU_ACEITO_O_RISCO"
+
 
 
 @dataclass
@@ -143,3 +148,41 @@ def load_settings(path: Path | None = None) -> Settings:
 
 def kill_switch_active() -> bool:
     return KILL_FILE.exists()
+
+
+# ── controle do ciclo pelo dashboard ────────────────────────────────
+def get_runtime_interval(default: int) -> int:
+    """Intervalo (min) salvo pelo dashboard, ou o padrão do config.yaml."""
+    try:
+        data = json.loads(RUNTIME_FILE.read_text())
+        value = int(data.get("interval_minutes", default))
+        return value if value >= 1 else default
+    except (FileNotFoundError, ValueError, json.JSONDecodeError):
+        return default
+
+
+def set_runtime_interval(minutes: int) -> int:
+    """Salva o intervalo (mínimo 1 min). Escrita atômica. Retorna o valor salvo."""
+    minutes = max(1, int(minutes))
+    RUNTIME_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = RUNTIME_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"interval_minutes": minutes}))
+    tmp.replace(RUNTIME_FILE)
+    return minutes
+
+
+def request_run_now() -> None:
+    """Dashboard pede um ciclo imediato; o agente consome no próximo check."""
+    RUN_NOW_FILE.parent.mkdir(parents=True, exist_ok=True)
+    RUN_NOW_FILE.touch()
+
+
+def consume_run_now() -> bool:
+    """Retorna True (e limpa o pedido) se havia um 'rodar agora' pendente."""
+    if RUN_NOW_FILE.exists():
+        try:
+            RUN_NOW_FILE.unlink()
+        except FileNotFoundError:
+            pass
+        return True
+    return False

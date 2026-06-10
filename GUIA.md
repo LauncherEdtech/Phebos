@@ -1,7 +1,7 @@
 # 📖 Guia completo do Phebos
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-06-10 — abas "Logs ao vivo" e "Conexões" no dashboard (definir/testar chaves de API pelo navegador, com recarga automática pelo agente).
+> Última atualização: 2026-06-10 — controle do ciclo pelo dashboard: botão "Rodar ciclo agora" e campo de cadência (intervalo) ajustável sem reiniciar.
 
 ## O que é
 
@@ -151,6 +151,11 @@ Abra **http://localhost:8000**. Ele mostra:
   recarrega sozinho no próximo ciclo**, sem reiniciar container. A tela nunca
   mostra a chave completa (só prévia mascarada) e chaves de dinheiro REAL não
   podem ser definidas por ali — apenas via `.env`, por segurança.
+- **Barra de controle** (topo da Visão geral): botão **"▶ Rodar ciclo agora"**
+  dispara um ciclo na hora, sem esperar o intervalo; e o campo **"Cadência do
+  ciclo"** ajusta o intervalo (em minutos) — o agente aplica no próximo passo,
+  sem reiniciar. O intervalo vale a partir da próxima espera; intervalos curtos
+  (< 5 min) consomem mais cota da API.
 
 Visual em branco/preto/dourado. Atualiza sozinho a cada 60 segundos.
 A porta muda com `PHEBOS_DASHBOARD_PORT`.

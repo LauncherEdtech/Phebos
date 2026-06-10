@@ -16,7 +16,10 @@ from .analyst import Analyst
 from .brokers.alpaca import AlpacaBroker
 from .brokers.base import Broker
 from .brokers.binance import BinanceBroker
-from .config import SECRETS_FILE, Settings, kill_switch_active, load_settings
+from .config import (
+    SECRETS_FILE, Settings, consume_run_now, get_runtime_interval,
+    kill_switch_active, load_settings, set_runtime_interval,
+)
 from .evaluation import evaluate_demo, print_report
 from .indicators import atr_by_symbol, compute_indicators
 from .intelligence import get_daily_calendar, maybe_reflect
@@ -254,6 +257,25 @@ def main() -> None:
         except FileNotFoundError:
             return 0.0
 
+    # intervalo inicial: o do config.yaml (semeia o runtime.json se ainda não existe)
+    set_runtime_interval(get_runtime_interval(settings.interval_minutes))
+
+    def wait_next_cycle() -> None:
+        """Espera o intervalo atual, mas acorda na hora se o dashboard pedir
+        'rodar agora'. Relê o intervalo a cada passo (mudança via dashboard)."""
+        consume_run_now()  # descarta pedidos enfileirados durante o ciclo
+        waited = 0.0
+        step = 2.0
+        while True:
+            if consume_run_now():
+                log.info("ciclo manual solicitado pelo dashboard — rodando agora")
+                return
+            interval_min = get_runtime_interval(settings.interval_minutes)
+            if waited >= interval_min * 60:
+                return
+            time.sleep(step)
+            waited += step
+
     last_secrets = secrets_mtime()
     while True:
         run_cycle(settings, brokers, analyst, risk, journal, notifier)
@@ -274,7 +296,7 @@ def main() -> None:
             except Exception:
                 log.exception("falha ao recarregar chaves — mantendo configuração anterior")
 
-        time.sleep(settings.interval_minutes * 60)
+        wait_next_cycle()
 
 
 if __name__ == "__main__":

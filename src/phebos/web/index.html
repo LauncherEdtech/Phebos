@@ -38,6 +38,19 @@
   main { max-width: 1280px; margin: 0 auto; padding: 26px 22px 60px; }
   .view { display: none; } .view.active { display: block; }
 
+  /* ── barra de controle do ciclo ── */
+  .control-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+                 background: var(--panel); border: 1px solid var(--line);
+                 border-left: 3px solid var(--gold); border-radius: 12px;
+                 padding: 14px 18px; margin-bottom: 18px;
+                 box-shadow: 0 2px 10px rgba(20,20,20,.04); }
+  .control-interval { display: flex; align-items: center; gap: 8px; }
+  .control-interval label { font-size: 13px; font-weight: 600; color: #3A3833; }
+  .control-interval input { width: 80px; padding: 8px 10px; border: 1px solid var(--line);
+                            border-radius: 8px; font: 14px inherit; background: #FCFBF8; }
+  .control-interval input:focus { outline: none; border-color: var(--gold); }
+  #control-msg { font-size: 13px; }
+
   /* ── cartões ── */
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
            gap: 14px; margin-bottom: 22px; }
@@ -161,6 +174,17 @@
 <main>
 <!-- ═══════════ VISÃO GERAL ═══════════ -->
 <div class="view active" id="view-overview">
+
+  <div class="control-bar">
+    <button class="btn gold" id="btn-run-now">▶ Rodar ciclo agora</button>
+    <div class="control-interval">
+      <label for="interval-input">Cadência do ciclo:</label>
+      <input type="number" id="interval-input" min="1" max="1440" step="1">
+      <span class="muted">min</span>
+      <button class="btn dark" id="btn-interval-save">Salvar</button>
+    </div>
+    <span id="control-msg" class="muted"></span>
+  </div>
 
   <div class="cards">
     <div class="card"><div class="label">Patrimônio</div><div class="value" id="equity">—</div></div>
@@ -586,11 +610,53 @@ $('btn-test').onclick = async () => {
   $('btn-test').disabled = false;
 };
 
+// ── controle do ciclo (rodar agora + cadência) ──
+let intervalInput = $('interval-input');
+async function loadInterval() {
+  try {
+    const r = await getJSON('/api/runtime');
+    if (document.activeElement !== intervalInput) intervalInput.value = r.interval_minutes;
+  } catch (e) {}
+}
+function controlMsg(html) {
+  $('control-msg').innerHTML = html;
+  setTimeout(() => { $('control-msg').innerHTML = ''; }, 6000);
+}
+
+$('btn-run-now').onclick = async () => {
+  $('btn-run-now').disabled = true;
+  try {
+    await fetch('/api/run-now', {method: 'POST'});
+    controlMsg('<span class="ok">✔ ciclo solicitado — o agente roda em alguns segundos (veja em Logs ao vivo)</span>');
+  } catch (e) {
+    controlMsg('<span class="neg">✘ falha ao solicitar o ciclo</span>');
+  }
+  setTimeout(() => { $('btn-run-now').disabled = false; }, 3000);
+};
+
+$('btn-interval-save').onclick = async () => {
+  const minutes = parseInt(intervalInput.value, 10);
+  if (!minutes || minutes < 1) { controlMsg('<span class="neg">informe um valor ≥ 1 min</span>'); return; }
+  try {
+    const r = await fetch('/api/runtime', {method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({interval_minutes: minutes})});
+    const data = await r.json();
+    if (data.error) { controlMsg('<span class="neg">✘ ' + esc(data.error) + '</span>'); return; }
+    const aviso = minutes < 5 ? ' <span class="muted">(intervalos curtos consomem mais cota da API)</span>' : '';
+    controlMsg('<span class="ok">✔ cadência salva: ' + data.interval_minutes + ' min</span>' + aviso);
+  } catch (e) {
+    controlMsg('<span class="neg">✘ falha ao salvar a cadência</span>');
+  }
+};
+
 refresh();
 refreshLogs();
 loadKeysStatus();
+loadInterval();
 setInterval(refresh, 60_000);
 setInterval(refreshLogs, 10_000);
+setInterval(loadInterval, 30_000);
 </script>
 </body>
 </html>

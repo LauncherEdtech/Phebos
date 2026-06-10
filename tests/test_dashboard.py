@@ -108,3 +108,24 @@ def test_keys_endpoints(client, monkeypatch):
     monkeypatch.setattr(keys_mod, "test_telegram", lambda: {"ok": False, "detail": "token inválido"})
     results = client.post("/api/keys/test").json()
     assert results["gemini"]["ok"] is True and results["telegram"]["ok"] is False
+
+
+def test_runtime_endpoints(client):
+    # valor inicial (default do config de teste)
+    r = client.get("/api/runtime").json()
+    assert "interval_minutes" in r and r["interval_minutes"] >= 1
+    # salvar novo
+    saved = client.post("/api/runtime", json={"interval_minutes": 25}).json()
+    assert saved["interval_minutes"] == 25
+    assert client.get("/api/runtime").json()["interval_minutes"] == 25
+    # mínimo aplicado
+    assert client.post("/api/runtime", json={"interval_minutes": 0}).json()["interval_minutes"] == 1
+    # inválido
+    assert "error" in client.post("/api/runtime", json={}).json()
+
+
+def test_run_now_endpoint(client):
+    assert client.post("/api/run-now").json()["requested"] is True
+    # o pedido fica registrado para o agente consumir
+    import phebos.config
+    assert phebos.config.consume_run_now() is True
