@@ -12,7 +12,8 @@ markets:
     symbols: [BTCUSDT, ETHUSDT, SOLUSDT]
   stocks:
     enabled: true
-    symbols: [AAPL, MSFT, NVDA, SPY]
+    # Dica: PBR = ADR da Petrobras na NYSE; dá para operar empresas brasileiras assim
+    symbols: [AAPL, MSFT, NVDA, TSLA, SPY]
 
 # Motor de risco — limites rígidos aplicados em código, fora do alcance da IA
 risk:
@@ -28,7 +29,23 @@ demo:
   min_return_pct: 2           # retorno total mínimo no período
   max_drawdown_pct: 10        # drawdown máximo tolerado no período
 
+# Inteligência de notícias
+news:
+  max_headlines_per_feed: 8
+  rss_feeds:
+    crypto:
+      - https://www.coindesk.com/arc/outboundfeeds/rss/
+      - https://cointelegraph.com/rss
+      - https://decrypt.co/feed
+    stocks:
+      - https://finance.yahoo.com/news/rssindex
+      - https://www.cnbc.com/id/100003114/device/rss/rss.html
+      - https://feeds.content.dowjones.io/public/rss/mw_topstories
+
 analyst:
   model: claude-opus-4-8
+  # Pesquisa ativa na web antes de cada decisão (custo: ~US$0,01 por busca)
+  web_search: true
+  max_web_searches_per_cycle: 6
   # Instrução extra opcional anexada ao prompt do analista (estilo, viés, etc.)
   extra_instructions: ""

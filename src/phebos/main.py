@@ -16,7 +16,9 @@ from .brokers.base import Broker
 from .brokers.binance import BinanceBroker
 from .config import Settings, kill_switch_active, load_settings
 from .evaluation import evaluate_demo, print_report
+from .indicators import compute_indicators
 from .journal import Journal
+from .news import fetch_headlines, format_headlines
 from .risk import RiskEngine
 
 log = logging.getLogger("phebos")
@@ -48,7 +50,22 @@ def run_cycle(settings: Settings, brokers, analyst: Analyst, risk: RiskEngine, j
             log.info("[%s] patrimônio=$%.2f caixa=$%.2f posições=%d",
                      market, snapshot.equity_usd, snapshot.cash_usd, len(snapshot.positions))
 
-            decision = analyst.decide(snapshot, risk.summary())
+            # 1) manchetes RSS (rápido e gratuito)
+            headlines = fetch_headlines(settings.news.feeds_for(market),
+                                        settings.news.max_headlines_per_feed)
+            log.info("[%s] %d manchetes coletadas via RSS", market, len(headlines))
+
+            # 2) pesquisa ativa: Claude + web search → briefing de inteligência
+            briefing = analyst.research(snapshot, format_headlines(headlines))
+            journal.log_research(settings.mode, market, briefing)
+            log.info("[%s] briefing: %s", market,
+                     briefing[:300].replace("\n", " ") + ("…" if len(briefing) > 300 else ""))
+
+            # 3) indicadores técnicos dos candles
+            indicators = compute_indicators(snapshot)
+
+            # 4) decisão estruturada
+            decision = analyst.decide(snapshot, indicators, briefing, risk.summary())
             journal.log_decision(settings.mode, market, decision.market_view, len(decision.orders))
             log.info("[%s] análise: %s", market, decision.market_view)
 
@@ -91,7 +108,12 @@ def main() -> None:
         return
 
     brokers = build_brokers(settings)
-    analyst = Analyst(settings.analyst_model, settings.analyst_extra_instructions)
+    analyst = Analyst(
+        settings.analyst_model,
+        settings.analyst_extra_instructions,
+        web_search=settings.analyst_web_search,
+        max_web_searches=settings.analyst_max_web_searches,
+    )
     risk = RiskEngine(settings.risk)
 
     banner = "DINHEIRO REAL" if settings.is_live else "DEMO (dinheiro fictício)"

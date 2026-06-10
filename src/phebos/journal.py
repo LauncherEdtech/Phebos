@@ -28,6 +28,13 @@ CREATE TABLE IF NOT EXISTS trades (
     reason TEXT NOT NULL,
     rationale TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS research (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    market TEXT NOT NULL,
+    briefing TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS equity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ts TEXT NOT NULL,
@@ -52,6 +59,13 @@ class Journal:
         self.conn.execute(
             "INSERT INTO decisions (ts, mode, market, market_view, orders_proposed) VALUES (?,?,?,?,?)",
             (_now(), mode, market, market_view, orders_proposed),
+        )
+        self.conn.commit()
+
+    def log_research(self, mode: str, market: str, briefing: str) -> None:
+        self.conn.execute(
+            "INSERT INTO research (ts, mode, market, briefing) VALUES (?,?,?,?)",
+            (_now(), mode, market, briefing),
         )
         self.conn.commit()
 

@@ -38,6 +38,15 @@ class MarketConfig:
 
 
 @dataclass
+class NewsConfig:
+    max_headlines_per_feed: int = 8
+    rss_feeds: dict = field(default_factory=dict)  # {"crypto": [...], "stocks": [...]}
+
+    def feeds_for(self, market: str) -> List[str]:
+        return list(self.rss_feeds.get(market, []))
+
+
+@dataclass
 class Settings:
     mode: str
     interval_minutes: int
@@ -45,8 +54,11 @@ class Settings:
     stocks: MarketConfig
     risk: RiskConfig
     demo: DemoConfig
+    news: NewsConfig
     analyst_model: str
     analyst_extra_instructions: str
+    analyst_web_search: bool
+    analyst_max_web_searches: int
 
     @property
     def is_live(self) -> bool:
@@ -86,6 +98,7 @@ def load_settings(path: Path | None = None) -> Settings:
 
     markets = raw.get("markets", {})
     analyst = raw.get("analyst", {})
+    news = raw.get("news", {})
     return Settings(
         mode=mode,
         interval_minutes=int(raw.get("interval_minutes", 15)),
@@ -93,8 +106,14 @@ def load_settings(path: Path | None = None) -> Settings:
         stocks=MarketConfig(**markets.get("stocks", {})),
         risk=RiskConfig(**raw.get("risk", {})),
         demo=DemoConfig(**raw.get("demo", {})),
+        news=NewsConfig(
+            max_headlines_per_feed=int(news.get("max_headlines_per_feed", 8)),
+            rss_feeds=news.get("rss_feeds", {}) or {},
+        ),
         analyst_model=analyst.get("model", "claude-opus-4-8"),
         analyst_extra_instructions=analyst.get("extra_instructions", "") or "",
+        analyst_web_search=bool(analyst.get("web_search", True)),
+        analyst_max_web_searches=int(analyst.get("max_web_searches_per_cycle", 6)),
     )
 
 

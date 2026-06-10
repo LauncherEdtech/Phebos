@@ -24,11 +24,17 @@ Use por sua conta e risco. Nada aqui é recomendação de investimento.
 ```
 Loop (a cada N minutos)
   → coleta dados de mercado (candles, preços, posições, saldo)
-  → chama a API do Claude (claude-opus-4-8) com os dados
-  → Claude retorna decisão estruturada (JSON validado: ordens + justificativa)
+  → coleta manchetes de notícias via RSS (CoinDesk, Yahoo Finance, CNBC, ...)
+  → PESQUISA: Claude com web search investiga as notícias das últimas horas
+    (anúncios de governos, IPOs, descobertas, reação das redes sociais)
+    e produz um briefing de inteligência de mercado
+  → calcula indicadores técnicos (RSI, médias móveis, tendência de volume)
+  → DECISÃO: Claude recebe snapshot + indicadores + briefing e retorna uma
+    decisão estruturada (JSON validado: ordens + justificativa), priorizando
+    notícias fortes ainda não precificadas — como um gestor humano faria
   → motor de risco valida cada ordem (limites rígidos em código)
   → executa as ordens aprovadas via API da corretora/exchange
-  → registra tudo no journal (SQLite): decisões, trades, evolução do patrimônio
+  → registra tudo no journal (SQLite): briefings, decisões, trades, patrimônio
 ```
 
 ```
@@ -36,15 +42,32 @@ src/phebos/
 ├── main.py          # ponto de entrada: loop do agente + comandos CLI
 ├── config.py        # carrega config.yaml + variáveis de ambiente
 ├── schemas.py       # modelos Pydantic (decisão da IA, ordens, snapshot)
-├── analyst.py       # cliente da API do Claude — análise e decisão
+├── news.py          # manchetes via RSS/Atom (parser próprio, sem deps extras)
+├── indicators.py    # RSI, SMA, preço vs. média, tendência de volume
+├── analyst.py       # 2 etapas: pesquisa (web search) → decisão estruturada
 ├── risk.py          # motor de risco determinístico + kill switch
-├── journal.py       # registro em SQLite (trades, decisões, patrimônio)
+├── journal.py       # registro em SQLite (briefings, trades, patrimônio)
 ├── evaluation.py    # avalia o período demo e diz se está apto ao modo real
 └── brokers/
     ├── base.py      # interface comum de corretora
     ├── binance.py   # Binance spot (testnet ou real)
     └── alpaca.py    # Alpaca (paper ou real)
 ```
+
+### Inteligência de notícias
+
+O agente reage a eventos do mundo real dentro do intervalo do ciclo
+(`interval_minutes`). Exemplos do que o pesquisador captura:
+
+- Governo anuncia compra de Bitcoin para reserva estratégica → tese de compra
+  antes da alta consolidar.
+- Empresa lança produto mal recebido pelo mercado/redes sociais → tese de venda.
+- Descoberta relevante (ex.: nova bacia de petróleo) → tese de compra na ação.
+
+> Custo/latência: a pesquisa usa a ferramenta de web search da API da Anthropic
+> (~US$0,01 por busca, limite configurável em `max_web_searches_per_cycle`).
+> O sistema reage em minutos — rápido como um analista humano atento, mas não
+> compete com robôs de alta frequência que reagem em milissegundos.
 
 ## Setup
 
