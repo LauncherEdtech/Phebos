@@ -1,7 +1,7 @@
 # 📖 Guia completo do Phebos
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-06-10 — disciplina de saída (stop/take-profit), memória de teses, dedupe de notícias e P&L realizado com métricas profissionais.
+> Última atualização: 2026-06-10 — calendário econômico, auto-reflexão, sentimento social, sizing dinâmico (ATR/convicção/regime), multi-timeframe, anti-tilt, calibração de confiança, novo frontend (branco/preto/dourado) com aba de histórico e suíte com 119 testes.
 
 ## O que é
 
@@ -22,7 +22,18 @@ O Phebos é um agente autônomo de trading que:
    e **não opera o mesmo evento de notícia duas vezes** (dedupe).
 7. Calcula **P&L realizado por posição** e métricas profissionais (taxa de
    acerto, fator de lucro, comparação com buy-and-hold).
-8. Registra tudo em SQLite, **avisa no Telegram** e exibe num **dashboard web**.
+8. **Antecipa eventos**: consulta o calendário econômico (Fed, CPI, payroll,
+   earnings) uma vez por dia e reduz exposição às vésperas de evento forte.
+9. **Aprende com os próprios erros**: a cada 7 dias revisa os trades fechados
+   e gera lições que entram no prompt dos ciclos seguintes; acompanha a
+   **calibração de confiança** (acerto real por nível de convicção declarado).
+10. Lê o **sentimento social** (Reddit, StockTwits, Fear & Greed) para captar
+    a reação do público antes de virar manchete.
+11. **Dimensiona posições dinamicamente**: convicção × volatilidade (ATR) ×
+    regime do mercado (alta/baixa/lateral, multi-timeframe 1h/4h/1d) — e corta
+    o sizing pela metade após sequência de perdas (**anti-tilt**).
+12. Registra tudo em SQLite, **avisa no Telegram** e exibe num **dashboard web**
+    com aba de histórico completo (leituras, pensamentos, operações, reflexões).
 
 ⚠️ **Não há garantia de lucro.** O sistema nasce em modo demo (dinheiro
 fictício) e só vai ao modo real com a sua confirmação explícita.
@@ -108,7 +119,13 @@ Abra **http://localhost:8000**. Ele mostra:
 - **Briefings de notícias**: o relatório completo do pesquisador a cada ciclo
   (clique para expandir).
 
-Atualiza sozinho a cada 60 segundos. A porta muda com `PHEBOS_DASHBOARD_PORT`.
+- **Calibração de confiança**: acerto real por convicção declarada pela IA.
+- **Lições aprendidas**: a auto-reflexão mais recente do agente.
+- **Aba "Histórico do bot"**: linha do tempo completa — 🔎 leituras de mercado,
+  🧠 pensamentos, 💱 operações, 🏁 resultados e 📚 reflexões, com filtros.
+
+Visual em branco/preto/dourado. Atualiza sozinho a cada 60 segundos.
+A porta muda com `PHEBOS_DASHBOARD_PORT`.
 
 > 🔒 O dashboard não tem login. Na sua máquina, tudo bem. Num servidor,
 > não exponha a porta 8000 ao mundo: acesse via túnel SSH
@@ -166,6 +183,13 @@ ssh -L 8000:localhost:8000 usuario@ip-do-servidor
 | `risk.take_profit_pct` | Venda automática se a posição subir X% do preço médio (padrão 15) |
 | `risk.trailing_stop_pct` | Venda se cair X% abaixo do pico desde a entrada (0 = desligado) |
 | `risk.event_dedup_days` | Janela em que o mesmo evento de notícia não é re-operado (padrão 3) |
+| `risk.vol_target_atr_pct` | ATR de referência do sizing: ativo mais volátil → posição menor (padrão 4) |
+| `risk.loss_streak_threshold` | Perdas seguidas que ativam o anti-tilt (padrão 3) |
+| `risk.loss_streak_factor` | Fator de corte do sizing durante o tilt (padrão 0.5) |
+| `sentiment.enabled` | Liga/desliga Reddit + StockTwits + Fear & Greed |
+| `sentiment.reddit_subs` | Subreddits monitorados por mercado |
+| `calendar.enabled` | Liga/desliga o calendário econômico (1 busca/dia, cacheada) |
+| `reflection.every_days` | Frequência da auto-reflexão (padrão 7 dias) |
 | `demo.*` | Critérios do período demo (dias, trades, retorno, drawdown) |
 | `demo.must_beat_benchmark` | Exige retorno ≥ buy-and-hold dos símbolos para aprovar o demo |
 | `news.rss_feeds` | Feeds RSS por mercado |
@@ -215,6 +239,17 @@ tabela `realized` e no dashboard) e avisa no Telegram.
 
 A IA é instruída a vender quando a **tese** da posição enfraquecer — as
 proteções mecânicas cuidam do resto.
+
+## 8.2 Rodando os testes
+
+A suíte cobre indicadores, motor de risco (sizing, vetos, saídas, anti-tilt),
+contabilidade de posições, dedupe, reflexão, calendário, sentimento, brokers
+(com APIs simuladas), dashboard e o fluxo completo do agente:
+
+```bash
+pip install pytest
+python -m pytest tests/ -q
+```
 
 ## 9. Solução de problemas
 

@@ -33,29 +33,39 @@ class AlpacaBroker(Broker):
     def is_market_open(self) -> bool:
         return bool(self._get(self.base_url, "/v2/clock").get("is_open"))
 
-    def snapshot(self, symbols: List[str]) -> MarketSnapshot:
-        bars = self._get(DATA_URL, "/v2/stocks/bars", {
+    def _bars(self, symbols: List[str], timeframe: str, limit: int) -> dict[str, list]:
+        raw = self._get(DATA_URL, "/v2/stocks/bars", {
             "symbols": ",".join(symbols),
-            "timeframe": "1Hour",
-            "limit": 24,
+            "timeframe": timeframe,
+            "limit": limit * max(len(symbols), 1),
             "feed": "iex",
-        }).get("bars", {})
+        }).get("bars", {}) or {}
+        out: dict[str, list] = {}
+        for sym, sym_bars in raw.items():
+            out[sym] = [
+                Candle(open_time=b["t"], open=b["o"], high=b["h"],
+                       low=b["l"], close=b["c"], volume=b["v"])
+                for b in sym_bars[-limit:]
+            ]
+        return out
+
+    def snapshot(self, symbols: List[str]) -> MarketSnapshot:
+        bars_1h = self._bars(symbols, "1Hour", 48)
+        bars_4h = self._bars(symbols, "4Hour", 30)
+        bars_1d = self._bars(symbols, "1Day", 30)
 
         symbol_data = []
         for sym in symbols:
-            sym_bars = bars.get(sym, [])
-            if not sym_bars:
+            candles = bars_1h.get(sym, [])
+            if not candles:
                 continue
-            candles = [
-                Candle(open_time=b["t"], open=b["o"], high=b["h"],
-                       low=b["l"], close=b["c"], volume=b["v"])
-                for b in sym_bars
-            ]
             first, last = candles[0], candles[-1]
             change = (last.close - first.open) / first.open * 100 if first.open else None
             symbol_data.append(SymbolData(
-                symbol=sym, last_price=last.close,
-                change_24h_pct=change, candles=candles,
+                symbol=sym, last_price=last.close, change_24h_pct=change,
+                candles=candles,
+                candles_4h=bars_4h.get(sym, []),
+                candles_1d=bars_1d.get(sym, []),
             ))
 
         account = self._get(self.base_url, "/v2/account")

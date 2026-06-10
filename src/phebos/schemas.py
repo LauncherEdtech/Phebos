@@ -18,7 +18,9 @@ class SymbolData(BaseModel):
     symbol: str
     last_price: float
     change_24h_pct: Optional[float] = None
-    candles: List[Candle] = Field(default_factory=list)
+    candles: List[Candle] = Field(default_factory=list)        # 1h
+    candles_4h: List[Candle] = Field(default_factory=list)     # visão intermediária
+    candles_1d: List[Candle] = Field(default_factory=list)     # tendência maior
 
 
 class Position(BaseModel):

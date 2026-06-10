@@ -48,25 +48,30 @@ class BinanceBroker(Broker):
     def is_market_open(self) -> bool:
         return True  # cripto opera 24/7
 
+    def _klines(self, symbol: str, interval: str, limit: int) -> list:
+        raw = self._public("/api/v3/klines", {"symbol": symbol, "interval": interval, "limit": limit})
+        return [
+            Candle(
+                open_time=datetime.fromtimestamp(k[0] / 1000, tz=timezone.utc).isoformat(),
+                open=float(k[1]), high=float(k[2]), low=float(k[3]),
+                close=float(k[4]), volume=float(k[5]),
+            )
+            for k in raw
+        ]
+
     def snapshot(self, symbols: List[str]) -> MarketSnapshot:
         symbol_data = []
         prices: dict[str, float] = {}
         for sym in symbols:
             ticker = self._public("/api/v3/ticker/24hr", {"symbol": sym})
-            klines = self._public("/api/v3/klines", {"symbol": sym, "interval": "1h", "limit": 24})
             prices[sym] = float(ticker["lastPrice"])
             symbol_data.append(SymbolData(
                 symbol=sym,
                 last_price=float(ticker["lastPrice"]),
                 change_24h_pct=float(ticker["priceChangePercent"]),
-                candles=[
-                    Candle(
-                        open_time=datetime.fromtimestamp(k[0] / 1000, tz=timezone.utc).isoformat(),
-                        open=float(k[1]), high=float(k[2]), low=float(k[3]),
-                        close=float(k[4]), volume=float(k[5]),
-                    )
-                    for k in klines
-                ],
+                candles=self._klines(sym, "1h", 48),
+                candles_4h=self._klines(sym, "4h", 30),
+                candles_1d=self._klines(sym, "1d", 30),
             ))
 
         account = self._signed("GET", "/api/v3/account")

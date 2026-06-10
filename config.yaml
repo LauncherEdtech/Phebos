@@ -25,6 +25,7 @@ risk:
   take_profit_pct: 15         # venda automática se a posição subir 15% do preço médio
   trailing_stop_pct: 0        # venda se cair X% abaixo do PICO desde a entrada (0 = desligado)
   event_dedup_days: 3         # o mesmo evento de notícia não é operado de novo por 3 dias
+  vol_target_atr_pct: 4       # ATR de referência: ativo mais volátil → posição menor
 
 # Período de avaliação do modo demo e critérios para liberar o modo real
 demo:
@@ -60,3 +61,18 @@ notifications:
   # Avisos no Telegram (trades executados, ordens vetadas, erros).
   # Requer TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID no .env
   telegram: true
+
+# Sentimento social (Reddit, StockTwits, Fear & Greed) — gratuito, sem chaves
+sentiment:
+  enabled: true
+  reddit_subs:
+    crypto: [CryptoCurrency, Bitcoin]
+    stocks: [stocks, wallstreetbets]
+
+# Calendário econômico (Fed, CPI, payroll, earnings) — 1 busca por dia, cacheada
+calendar:
+  enabled: true
+
+# Auto-reflexão: o agente revisa os próprios trades e gera lições para o prompt
+reflection:
+  every_days: 7

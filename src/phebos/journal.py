@@ -93,7 +93,25 @@ CREATE TABLE IF NOT EXISTS prices (
     symbol TEXT NOT NULL,
     price REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS lessons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    lessons_text TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS calendar_cache (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL UNIQUE,
+    text TEXT NOT NULL
+);
 """
+
+# Migrações de colunas para bancos criados em versões anteriores
+_MIGRATIONS = [
+    "ALTER TABLE positions ADD COLUMN confidence TEXT NOT NULL DEFAULT 'medium'",
+    "ALTER TABLE realized ADD COLUMN thesis TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE realized ADD COLUMN confidence TEXT NOT NULL DEFAULT 'medium'",
+]
 
 # Quantidade residual abaixo disso (em US$) é tratada como poeira e fecha a posição
 _DUST_USD = 1.0
@@ -108,6 +126,12 @@ class Journal:
         path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(path, timeout=10)
         self.conn.executescript(_SCHEMA)
+        for migration in _MIGRATIONS:
+            try:
+                self.conn.execute(migration)
+            except sqlite3.OperationalError:
+                pass  # coluna já existe
+        self.conn.commit()
 
     # ── registros básicos ───────────────────────────────────────────
     def log_decision(self, mode: str, market: str, market_view: str, orders_proposed: int) -> None:
@@ -151,7 +175,7 @@ class Journal:
 
     # ── livro de posições (contabilidade por preço médio) ───────────
     def record_buy(self, mode: str, market: str, symbol: str, notional_usd: float,
-                   price: float, thesis: str) -> None:
+                   price: float, thesis: str, confidence: str = "medium") -> None:
         """Compra: aumenta a posição e recalcula o preço médio."""
         qty = notional_usd / price
         row = self.conn.execute(
@@ -162,8 +186,9 @@ class Journal:
         if row is None:
             self.conn.execute(
                 "INSERT INTO positions (mode, market, symbol, qty, avg_price, last_price,"
-                " peak_price, thesis, opened_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                (mode, market, symbol, qty, price, price, price, thesis, ts, ts),
+                " peak_price, thesis, confidence, opened_at, updated_at)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (mode, market, symbol, qty, price, price, price, thesis, confidence, ts, ts),
             )
         else:
             old_qty, old_avg, peak = row
@@ -171,8 +196,9 @@ class Journal:
             new_avg = (old_qty * old_avg + notional_usd) / new_qty
             self.conn.execute(
                 "UPDATE positions SET qty=?, avg_price=?, last_price=?, peak_price=?,"
-                " thesis=?, updated_at=? WHERE mode=? AND market=? AND symbol=?",
-                (new_qty, new_avg, price, max(peak, price), thesis, ts, mode, market, symbol),
+                " thesis=?, confidence=?, updated_at=? WHERE mode=? AND market=? AND symbol=?",
+                (new_qty, new_avg, price, max(peak, price), thesis, confidence, ts,
+                 mode, market, symbol),
             )
         self.conn.commit()
 
@@ -180,20 +206,22 @@ class Journal:
                     price: float, reason: str) -> tuple[float, float]:
         """Venda: reduz/fecha a posição e realiza o P&L. Retorna (pnl_usd, pnl_pct)."""
         row = self.conn.execute(
-            "SELECT qty, avg_price FROM positions WHERE mode=? AND market=? AND symbol=?",
+            "SELECT qty, avg_price, thesis, confidence FROM positions"
+            " WHERE mode=? AND market=? AND symbol=?",
             (mode, market, symbol),
         ).fetchone()
         if row is None:
             return 0.0, 0.0  # venda sem posição registrada (ex.: saldo pré-existente)
-        qty, avg_price = row
+        qty, avg_price, thesis, confidence = row
         sell_qty = min(qty, notional_usd / price)
         pnl_usd = sell_qty * (price - avg_price)
         pnl_pct = (price - avg_price) / avg_price * 100 if avg_price else 0.0
 
         self.conn.execute(
             "INSERT INTO realized (ts, mode, market, symbol, qty, avg_price, exit_price,"
-            " pnl_usd, pnl_pct, reason) VALUES (?,?,?,?,?,?,?,?,?,?)",
-            (_now(), mode, market, symbol, sell_qty, avg_price, price, pnl_usd, pnl_pct, reason),
+            " pnl_usd, pnl_pct, reason, thesis, confidence) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            (_now(), mode, market, symbol, sell_qty, avg_price, price, pnl_usd, pnl_pct,
+             reason, thesis, confidence),
         )
         remaining = qty - sell_qty
         if remaining * price < _DUST_USD:
@@ -329,12 +357,87 @@ class Journal:
 
     def realized_list(self, mode: str, limit: int = 100) -> list[dict]:
         rows = self.conn.execute(
-            "SELECT ts, market, symbol, qty, avg_price, exit_price, pnl_usd, pnl_pct, reason"
-            " FROM realized WHERE mode=? ORDER BY ts DESC LIMIT ?",
+            "SELECT ts, market, symbol, qty, avg_price, exit_price, pnl_usd, pnl_pct, reason,"
+            " thesis, confidence FROM realized WHERE mode=? ORDER BY ts DESC LIMIT ?",
             (mode, limit),
         ).fetchall()
         return [{"ts": r[0], "market": r[1], "symbol": r[2], "qty": r[3], "avg_price": r[4],
-                 "exit_price": r[5], "pnl_usd": r[6], "pnl_pct": r[7], "reason": r[8]} for r in rows]
+                 "exit_price": r[5], "pnl_usd": r[6], "pnl_pct": r[7], "reason": r[8],
+                 "thesis": r[9], "confidence": r[10]} for r in rows]
+
+    # ── calibração de confiança (diferencial vs bots tradicionais) ──
+    def confidence_calibration(self, mode: str) -> dict:
+        """Taxa de acerto por nível de convicção declarado pela IA.
+
+        Alimenta o prompt: se as ordens 'high' acertam menos que as 'medium',
+        a IA fica sabendo — e o operador também.
+        """
+        rows = self.conn.execute(
+            "SELECT confidence, COUNT(*), SUM(CASE WHEN pnl_usd > 0 THEN 1 ELSE 0 END),"
+            " AVG(pnl_pct) FROM realized WHERE mode=? GROUP BY confidence",
+            (mode,),
+        ).fetchall()
+        return {
+            conf: {
+                "trades": n,
+                "win_rate_pct": wins / n * 100 if n else None,
+                "avg_pnl_pct": round(avg_pnl, 2) if avg_pnl is not None else None,
+            }
+            for conf, n, wins, avg_pnl in rows
+        }
+
+    # ── lições aprendidas (auto-reflexão) ───────────────────────────
+    def save_lessons(self, mode: str, lessons_text: str) -> None:
+        self.conn.execute(
+            "INSERT INTO lessons (ts, mode, lessons_text) VALUES (?,?,?)",
+            (_now(), mode, lessons_text),
+        )
+        self.conn.commit()
+
+    def latest_lessons(self, mode: str) -> dict | None:
+        row = self.conn.execute(
+            "SELECT ts, lessons_text FROM lessons WHERE mode=? ORDER BY ts DESC LIMIT 1",
+            (mode,),
+        ).fetchone()
+        return {"ts": row[0], "lessons_text": row[1]} if row else None
+
+    def closed_trades_since(self, mode: str, since_iso: str) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT ts, market, symbol, pnl_usd, pnl_pct, reason, thesis, confidence"
+            " FROM realized WHERE mode=? AND ts >= ? ORDER BY ts",
+            (mode, since_iso),
+        ).fetchall()
+        return [{"ts": r[0], "market": r[1], "symbol": r[2], "pnl_usd": r[3], "pnl_pct": r[4],
+                 "reason": r[5], "thesis": r[6], "confidence": r[7]} for r in rows]
+
+    # ── calendário econômico (cache diário) ─────────────────────────
+    def get_calendar(self, date: str) -> str | None:
+        row = self.conn.execute(
+            "SELECT text FROM calendar_cache WHERE date=?", (date,)
+        ).fetchone()
+        return row[0] if row else None
+
+    def save_calendar(self, date: str, text: str) -> None:
+        self.conn.execute(
+            "INSERT OR REPLACE INTO calendar_cache (date, text) VALUES (?,?)", (date, text)
+        )
+        self.conn.commit()
+
+    def losing_streak(self, mode: str) -> int:
+        """Nº de saídas com prejuízo consecutivas, da mais recente para trás.
+
+        Alimenta o circuit breaker anti-tilt: sequência de perdas → sizing reduzido.
+        """
+        rows = self.conn.execute(
+            "SELECT pnl_usd FROM realized WHERE mode=? ORDER BY ts DESC, id DESC", (mode,)
+        ).fetchall()
+        streak = 0
+        for (pnl,) in rows:
+            if pnl < 0:
+                streak += 1
+            else:
+                break
+        return streak
 
     def benchmark_return_pct(self, mode: str) -> float | None:
         """Retorno buy-and-hold: média (peso igual) da variação de cada símbolo

@@ -83,6 +83,31 @@ class RiskEngine:
                     ))
         return signals
 
+    # multiplicadores do dimensionamento dinâmico (determinísticos)
+    CONVICTION_MULT = {"high": 1.0, "medium": 0.7, "low": 0.4}
+    REGIME_MULT_BUY = {"alta": 1.0, "lateral": 0.8, "baixa": 0.5}
+
+    def position_cap_usd(self, equity_usd: float, confidence: str,
+                         atr_pct: float | None, regime: str,
+                         loss_streak: int = 0) -> float:
+        """Teto da ordem = base × convicção × escala de volatilidade × regime × anti-tilt.
+
+        - convicção alta → posição cheia; baixa → 40% do teto
+        - ativo mais volátil que o alvo (ATR) → posição menor (e vice-versa, limitado)
+        - regime de baixa → compras pela metade
+        - circuit breaker anti-tilt: sequência de perdas → sizing reduzido até
+          a próxima saída vencedora (disciplina de mesa profissional)
+        """
+        c = self.config
+        base = equity_usd * c.max_pct_per_trade / 100
+        conviction = self.CONVICTION_MULT.get(confidence, 0.7)
+        vol_scalar = 1.0
+        if atr_pct and atr_pct > 0:
+            vol_scalar = max(0.5, min(1.25, c.vol_target_atr_pct / atr_pct))
+        regime_mult = self.REGIME_MULT_BUY.get(regime, 0.8)
+        tilt_mult = c.loss_streak_factor if loss_streak >= c.loss_streak_threshold else 1.0
+        return base * conviction * vol_scalar * regime_mult * tilt_mult
+
     def review(
         self,
         orders: List[OrderDecision],
@@ -90,10 +115,14 @@ class RiskEngine:
         allowed_symbols: List[str],
         daily_pnl_pct: float,
         acted_events: set[tuple[str, str, str]] | None = None,
+        atr_by_symbol: dict[str, float] | None = None,
+        regime: str = "lateral",
+        loss_streak: int = 0,
     ) -> List[RiskVerdict]:
         verdicts: List[RiskVerdict] = []
         open_symbols = {p.symbol for p in snapshot.positions}
         acted_events = acted_events or set()
+        atr_by_symbol = atr_by_symbol or {}
         c = self.config
 
         for order in orders:
@@ -119,14 +148,26 @@ class RiskEngine:
             if order.notional_usd < c.min_order_notional_usd:
                 verdicts.append(RiskVerdict(order, False, f"ordem abaixo do mínimo de ${c.min_order_notional_usd}"))
                 continue
-            max_notional = snapshot.equity_usd * c.max_pct_per_trade / 100
-            if order.notional_usd > max_notional:
-                verdicts.append(RiskVerdict(
-                    order, False,
-                    f"${order.notional_usd:.2f} excede o limite de ${max_notional:.2f} "
-                    f"({c.max_pct_per_trade}% do patrimônio)",
-                ))
-                continue
+            # dimensionamento dinâmico: convicção × volatilidade (ATR) × regime.
+            # Ordens acima do teto são REDIMENSIONADAS para baixo, não vetadas.
+            sized_note = "ok"
+            if order.side == "buy":
+                cap = self.position_cap_usd(snapshot.equity_usd, order.confidence,
+                                            atr_by_symbol.get(order.symbol), regime,
+                                            loss_streak)
+                if order.notional_usd > cap:
+                    if cap < c.min_order_notional_usd:
+                        verdicts.append(RiskVerdict(
+                            order, False,
+                            f"teto dimensionado (${cap:.2f}: convicção {order.confidence}, "
+                            f"ATR {atr_by_symbol.get(order.symbol, '?')}%, regime {regime}) "
+                            f"ficou abaixo da ordem mínima",
+                        ))
+                        continue
+                    sized_note = (f"redimensionada de ${order.notional_usd:.2f} para ${cap:.2f} "
+                                  f"(convicção {order.confidence}, "
+                                  f"ATR {atr_by_symbol.get(order.symbol, '?')}%, regime {regime})")
+                    order.notional_usd = round(cap, 2)
             if order.side == "buy":
                 if order.symbol not in open_symbols and len(open_symbols) >= c.max_open_positions:
                     verdicts.append(RiskVerdict(order, False, f"já há {len(open_symbols)} posições abertas (máx. {c.max_open_positions})"))
@@ -138,7 +179,7 @@ class RiskEngine:
                 verdicts.append(RiskVerdict(order, False, "venda de ativo sem posição aberta"))
                 continue
 
-            verdicts.append(RiskVerdict(order, True, "ok"))
+            verdicts.append(RiskVerdict(order, True, sized_note))
             if order.side == "buy":
                 open_symbols.add(order.symbol)
         return verdicts

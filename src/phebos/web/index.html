@@ -3,155 +3,268 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Phebos — Dashboard</title>
+<title>Phebos — Painel</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
   :root {
-    --bg: #0d1117; --panel: #161b22; --border: #30363d;
-    --text: #e6edf3; --muted: #8b949e;
-    --green: #3fb950; --red: #f85149; --blue: #58a6ff; --yellow: #d29922;
+    --bg: #FBFAF7; --panel: #FFFFFF; --ink: #141414; --muted: #74716A;
+    --gold: #B8923B; --gold-dark: #8C6D1F; --gold-soft: #F3EAD4;
+    --line: #E8E4DA; --green: #1E7B45; --red: #B3362C;
   }
   * { box-sizing: border-box; margin: 0; }
-  body { background: var(--bg); color: var(--text);
-         font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; padding: 20px; }
-  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
-  h1 { font-size: 22px; }
-  .badge { padding: 3px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; }
-  .badge.demo { background: #1f6feb33; color: var(--blue); border: 1px solid var(--blue); }
-  .badge.live { background: #f8514933; color: var(--red); border: 1px solid var(--red); }
-  .muted { color: var(--muted); font-size: 12px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 18px; }
-  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
-  .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
-  .card .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+  body { background: var(--bg); color: var(--ink);
+         font: 15px/1.55 "Segoe UI", -apple-system, Roboto, sans-serif; }
+
+  /* ── topo ── */
+  .topbar { background: #141414; color: #fff; padding: 18px 28px;
+            display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+            border-bottom: 3px solid var(--gold); }
+  .brand { font-family: Georgia, "Times New Roman", serif; font-size: 26px;
+           letter-spacing: .5px; }
+  .brand b { color: var(--gold); }
+  .badge { padding: 4px 14px; border-radius: 999px; font-weight: 600; font-size: 12px;
+           letter-spacing: .6px; }
+  .badge.demo { background: var(--gold); color: #141414; }
+  .badge.live { background: var(--red); color: #fff; }
+  .topbar .when { color: #B9B5AC; font-size: 12px; margin-left: auto; }
+
+  /* ── abas ── */
+  .tabs { display: flex; gap: 4px; background: #141414; padding: 0 28px; }
+  .tab { background: none; border: none; color: #B9B5AC; padding: 12px 22px;
+         font: 600 14px/1 inherit; cursor: pointer; border-bottom: 3px solid transparent; }
+  .tab:hover { color: #fff; }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  main { max-width: 1280px; margin: 0 auto; padding: 26px 22px 60px; }
+  .view { display: none; } .view.active { display: block; }
+
+  /* ── cartões ── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+           gap: 14px; margin-bottom: 22px; }
+  .card { background: var(--panel); border: 1px solid var(--line);
+          border-top: 3px solid var(--gold); border-radius: 12px; padding: 16px 18px;
+          box-shadow: 0 2px 10px rgba(20,20,20,.04); }
+  .card .label { color: var(--muted); font-size: 11px; text-transform: uppercase;
+                 letter-spacing: 1px; font-weight: 700; }
+  .card .value { font-family: Georgia, serif; font-size: 27px; margin-top: 6px; }
   .pos { color: var(--green); } .neg { color: var(--red); }
-  section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
-            padding: 16px; margin-bottom: 18px; }
-  section h2 { font-size: 15px; margin-bottom: 12px; color: var(--blue); }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px;
-       border-bottom: 1px solid var(--border); white-space: nowrap; }
-  td { padding: 6px 8px; border-bottom: 1px solid #21262d; vertical-align: top; }
+
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+            padding: 20px 22px; margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(20,20,20,.04); }
+  section h2 { font-family: Georgia, serif; font-size: 18px; font-weight: 600;
+               padding-bottom: 10px; margin-bottom: 14px;
+               border-bottom: 2px solid var(--gold-soft); }
+  section h2 .tag { color: var(--gold-dark); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; color: var(--muted); font-weight: 700; font-size: 11px;
+       text-transform: uppercase; letter-spacing: .8px; padding: 8px;
+       border-bottom: 2px solid var(--line); white-space: nowrap; }
+  td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:hover td { background: #FCF9F1; }
   .side-buy { color: var(--green); font-weight: 700; }
   .side-sell { color: var(--red); font-weight: 700; }
-  .ok { color: var(--green); } .veto { color: var(--yellow); }
-  details { margin-bottom: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
-  summary { cursor: pointer; color: var(--text); font-weight: 600; }
-  details pre { white-space: pre-wrap; color: var(--muted); margin-top: 10px; font-family: inherit; }
-  .criteria li { list-style: none; padding: 2px 0; }
-  .chart-box { position: relative; height: 320px; }
-  footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 10px; }
+  .ok { color: var(--green); } .veto { color: var(--gold-dark); }
+  .muted { color: var(--muted); }
+  .chart-box { position: relative; height: 330px; }
+
+  details { border: 1px solid var(--line); border-left: 3px solid var(--gold);
+            border-radius: 8px; padding: 12px 16px; margin-bottom: 10px; background: #fff; }
+  summary { cursor: pointer; font-weight: 600; }
+  details pre { white-space: pre-wrap; color: #3A3833; margin-top: 10px;
+                font-family: inherit; font-size: 13.5px; }
+
+  .criteria li { list-style: none; padding: 3px 0; }
+
+  /* ── histórico (linha do tempo) ── */
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip { border: 1px solid var(--line); background: #fff; color: var(--muted);
+          border-radius: 999px; padding: 6px 16px; font: 600 13px/1 inherit; cursor: pointer; }
+  .chip.active { background: #141414; color: var(--gold); border-color: #141414; }
+  .timeline { position: relative; padding-left: 26px; }
+  .timeline::before { content: ""; position: absolute; left: 8px; top: 4px; bottom: 4px;
+                      width: 2px; background: linear-gradient(var(--gold), var(--line)); }
+  .titem { position: relative; background: #fff; border: 1px solid var(--line);
+           border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; }
+  .titem::before { content: ""; position: absolute; left: -23px; top: 16px; width: 12px;
+                   height: 12px; border-radius: 50%; background: var(--gold);
+                   border: 2px solid #fff; box-shadow: 0 0 0 2px var(--gold); }
+  .titem .head { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .titem .icon { font-size: 16px; }
+  .titem .title { font-weight: 600; }
+  .titem .meta { color: var(--muted); font-size: 12px; margin-left: auto; white-space: nowrap; }
+  .titem .body { color: #3A3833; font-size: 13.5px; margin-top: 6px; white-space: pre-wrap; }
+  .titem.tipo-resultado.win { border-left: 3px solid var(--green); }
+  .titem.tipo-resultado.loss { border-left: 3px solid var(--red); }
+  .titem.tipo-reflexao { border-left: 3px solid var(--gold-dark); background: var(--gold-soft); }
+
+  footer { color: var(--muted); font-size: 12px; text-align: center; padding: 18px; }
   @media (max-width: 700px) { .hide-sm { display: none; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>🤖 Phebos</h1>
-  <span id="mode-badge" class="badge demo">…</span>
-  <span class="muted" id="last-update"></span>
-</header>
 
-<div class="cards">
-  <div class="card"><div class="label">Patrimônio</div><div class="value" id="equity">—</div></div>
-  <div class="card"><div class="label">Retorno do período</div><div class="value" id="return">—</div></div>
-  <div class="card"><div class="label">vs Buy-and-hold (alfa)</div><div class="value" id="alpha">—</div></div>
-  <div class="card"><div class="label">P&L realizado</div><div class="value" id="realized-pnl">—</div></div>
-  <div class="card"><div class="label">Taxa de acerto</div><div class="value" id="win-rate">—</div></div>
-  <div class="card"><div class="label">Fator de lucro</div><div class="value" id="profit-factor">—</div></div>
-  <div class="card"><div class="label">Drawdown máx.</div><div class="value" id="drawdown">—</div></div>
-  <div class="card"><div class="label">Trades executados</div><div class="value" id="executed">—</div></div>
-  <div class="card"><div class="label">Ordens vetadas</div><div class="value" id="vetoed">—</div></div>
-  <div class="card"><div class="label">Dias rodando</div><div class="value" id="days">—</div></div>
+<div class="topbar">
+  <span class="brand">✦ <b>Phebos</b></span>
+  <span id="mode-badge" class="badge demo">…</span>
+  <span class="when" id="last-update"></span>
+</div>
+<nav class="tabs">
+  <button class="tab active" data-view="overview">Visão geral</button>
+  <button class="tab" data-view="history">Histórico do bot</button>
+</nav>
+
+<main>
+<!-- ═══════════ VISÃO GERAL ═══════════ -->
+<div class="view active" id="view-overview">
+
+  <div class="cards">
+    <div class="card"><div class="label">Patrimônio</div><div class="value" id="equity">—</div></div>
+    <div class="card"><div class="label">Retorno do período</div><div class="value" id="return">—</div></div>
+    <div class="card"><div class="label">vs Buy-and-hold (alfa)</div><div class="value" id="alpha">—</div></div>
+    <div class="card"><div class="label">P&L realizado</div><div class="value" id="realized-pnl">—</div></div>
+    <div class="card"><div class="label">Taxa de acerto</div><div class="value" id="win-rate">—</div></div>
+    <div class="card"><div class="label">Fator de lucro</div><div class="value" id="profit-factor">—</div></div>
+    <div class="card"><div class="label">Drawdown máx.</div><div class="value" id="drawdown">—</div></div>
+    <div class="card"><div class="label">Trades executados</div><div class="value" id="executed">—</div></div>
+    <div class="card"><div class="label">Ordens vetadas</div><div class="value" id="vetoed">—</div></div>
+    <div class="card"><div class="label">Dias rodando</div><div class="value" id="days">—</div></div>
+  </div>
+
+  <section>
+    <h2><span class="tag">§</span> Evolução do patrimônio (US$)</h2>
+    <div class="chart-box"><canvas id="equity-chart"></canvas></div>
+  </section>
+
+  <section id="criteria-section" style="display:none">
+    <h2><span class="tag">§</span> Critérios para o modo real</h2>
+    <ul class="criteria" id="criteria"></ul>
+  </section>
+
+  <section>
+    <h2><span class="tag">§</span> Posições abertas <span class="muted" style="font-size:13px">— com a tese da IA</span></h2>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Ativo</th><th>Mercado</th><th>Valor</th><th>Preço médio</th>
+        <th>Preço atual</th><th>P&L</th><th class="hide-sm">Tese</th></tr></thead>
+      <tbody id="positions"></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2><span class="tag">§</span> Posições encerradas <span class="muted" style="font-size:13px">— P&L realizado</span></h2>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Quando</th><th>Ativo</th><th>Entrada</th><th>Saída</th>
+        <th>P&L US$</th><th>P&L %</th><th>Motivo</th></tr></thead>
+      <tbody id="realized"></tbody>
+    </table></div>
+  </section>
+
+  <section id="calibration-section" style="display:none">
+    <h2><span class="tag">§</span> Calibração de confiança <span class="muted" style="font-size:13px">— acerto real por convicção declarada</span></h2>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Convicção</th><th>Trades</th><th>Taxa de acerto</th><th>P&L médio</th></tr></thead>
+      <tbody id="calibration"></tbody>
+    </table></div>
+  </section>
+
+  <section id="lessons-section" style="display:none">
+    <h2><span class="tag">§</span> Lições aprendidas <span class="muted" style="font-size:13px">— auto-reflexão do agente</span></h2>
+    <pre id="lessons" style="white-space:pre-wrap; font-family:inherit; color:#3A3833"></pre>
+  </section>
+
+  <section>
+    <h2><span class="tag">§</span> Operações</h2>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Quando</th><th>Mercado</th><th>Ativo</th><th>Lado</th><th>Valor</th>
+        <th>Status</th><th class="hide-sm">Justificativa / motivo do veto</th></tr></thead>
+      <tbody id="trades"></tbody>
+    </table></div>
+  </section>
 </div>
 
-<section>
-  <h2>📈 Evolução do patrimônio (US$)</h2>
-  <div class="chart-box"><canvas id="equity-chart"></canvas></div>
-</section>
+<!-- ═══════════ HISTÓRICO ═══════════ -->
+<div class="view" id="view-history">
+  <section>
+    <h2><span class="tag">§</span> Linha do tempo do agente
+      <span class="muted" style="font-size:13px">— leituras, pensamentos, operações, resultados e reflexões</span></h2>
+    <div class="filters" id="filters">
+      <button class="chip active" data-f="todos">Tudo</button>
+      <button class="chip" data-f="leitura">🔎 Leituras</button>
+      <button class="chip" data-f="pensamento">🧠 Pensamentos</button>
+      <button class="chip" data-f="operacao">💱 Operações</button>
+      <button class="chip" data-f="resultado">🏁 Resultados</button>
+      <button class="chip" data-f="reflexao">📚 Reflexões</button>
+    </div>
+    <div class="timeline" id="timeline"></div>
+  </section>
+</div>
+</main>
 
-<section id="criteria-section" style="display:none">
-  <h2>🎯 Critérios para o modo real</h2>
-  <ul class="criteria" id="criteria"></ul>
-</section>
-
-<section>
-  <h2>📌 Posições abertas (com a tese da IA)</h2>
-  <div style="overflow-x:auto"><table>
-    <thead><tr>
-      <th>Ativo</th><th>Mercado</th><th>Valor</th><th>Preço médio</th><th>Preço atual</th>
-      <th>P&L</th><th class="hide-sm">Tese</th>
-    </tr></thead>
-    <tbody id="positions"></tbody>
-  </table></div>
-</section>
-
-<section>
-  <h2>✅ Posições encerradas (P&L realizado)</h2>
-  <div style="overflow-x:auto"><table>
-    <thead><tr>
-      <th>Quando</th><th>Ativo</th><th>Entrada</th><th>Saída</th>
-      <th>P&L US$</th><th>P&L %</th><th>Motivo</th>
-    </tr></thead>
-    <tbody id="realized"></tbody>
-  </table></div>
-</section>
-
-<section>
-  <h2>💱 Operações</h2>
-  <div style="overflow-x:auto"><table>
-    <thead><tr>
-      <th>Quando</th><th>Mercado</th><th>Ativo</th><th>Lado</th><th>Valor</th>
-      <th>Status</th><th class="hide-sm">Justificativa da IA / motivo do veto</th>
-    </tr></thead>
-    <tbody id="trades"></tbody>
-  </table></div>
-</section>
-
-<section>
-  <h2>🧠 Decisões da IA</h2>
-  <div style="overflow-x:auto"><table>
-    <thead><tr><th>Quando</th><th>Mercado</th><th>Leitura do mercado</th><th>Ordens</th></tr></thead>
-    <tbody id="decisions"></tbody>
-  </table></div>
-</section>
-
-<section>
-  <h2>📰 Briefings de notícias (pesquisador)</h2>
-  <div id="research"></div>
-</section>
-
-<footer>Atualiza automaticamente a cada 60s · Phebos</footer>
+<footer>Phebos · atualiza automaticamente a cada 60s</footer>
 
 <script>
 const $ = id => document.getElementById(id);
 const fmtUsd = v => '$' + Number(v).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 const fmtTs = ts => ts ? new Date(ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '—';
 const esc = s => (s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let chart;
+const mkt = m => m === 'crypto' ? '🪙 cripto' : m === 'stocks' ? '📊 ações' : '🌐 geral';
+let chart, historyItems = [], activeFilter = 'todos';
+
+// abas
+document.querySelectorAll('.tab').forEach(tab => tab.onclick = () => {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  tab.classList.add('active');
+  $('view-' + tab.dataset.view).classList.add('active');
+});
+
+// filtros do histórico
+document.querySelectorAll('.chip').forEach(chip => chip.onclick = () => {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  activeFilter = chip.dataset.f;
+  renderTimeline();
+});
 
 async function getJSON(url) { const r = await fetch(url); return r.json(); }
 
-async function refresh() {
-  const [summary, equity, trades, decisions, research, positions, realized] = await Promise.all([
-    getJSON('/api/summary'), getJSON('/api/equity'), getJSON('/api/trades'),
-    getJSON('/api/decisions'), getJSON('/api/research'),
-    getJSON('/api/positions'), getJSON('/api/realized'),
-  ]);
+const HICONS = {leitura: '🔎', pensamento: '🧠', operacao: '💱', resultado: '🏁', reflexao: '📚'};
+function renderTimeline() {
+  const items = historyItems.filter(i => activeFilter === 'todos' || i.type === activeFilter);
+  $('timeline').innerHTML = items.slice(0, 150).map(i => {
+    const cls = i.type === 'resultado' ? (i.pnl_usd >= 0 ? 'win' : 'loss') : '';
+    const long = (i.body || '').length > 280;
+    const body = long
+      ? `<details style="border:none;padding:0;margin-top:6px"><summary class="muted" style="font-weight:600">ver completo</summary><pre>${esc(i.body)}</pre></details>
+         <div class="body">${esc(i.body.slice(0, 280))}…</div>`
+      : `<div class="body">${esc(i.body)}</div>`;
+    return `<div class="titem tipo-${i.type} ${cls}">
+      <div class="head">
+        <span class="icon">${HICONS[i.type] || '•'}</span>
+        <span class="title">${esc(i.title)}</span>
+        <span class="meta">${mkt(i.market)} · ${fmtTs(i.ts)}</span>
+      </div>${body}</div>`;
+  }).join('') || '<p class="muted">nada registrado ainda — rode o agente</p>';
+}
 
-  // ── cabeçalho e cartões ──
+async function refresh() {
+  const [summary, equity, trades, positions, realized, history, calibration, lessons] =
+    await Promise.all([
+      getJSON('/api/summary'), getJSON('/api/equity'), getJSON('/api/trades'),
+      getJSON('/api/positions'), getJSON('/api/realized'), getJSON('/api/history'),
+      getJSON('/api/calibration'), getJSON('/api/lessons'),
+    ]);
+
+  // topo + cartões
   const badge = $('mode-badge');
-  badge.textContent = summary.mode === 'live' ? '🔴 DINHEIRO REAL' : '🟦 DEMO';
+  badge.textContent = summary.mode === 'live' ? '● DINHEIRO REAL' : '◌ MODO DEMO';
   badge.className = 'badge ' + (summary.mode === 'live' ? 'live' : 'demo');
-  $('last-update').textContent = summary.last_update ? 'última atualização: ' + fmtTs(summary.last_update) : 'sem dados ainda — rode o agente';
+  $('last-update').textContent = summary.last_update ? 'atualizado ' + fmtTs(summary.last_update) : 'sem dados — rode o agente';
   $('equity').textContent = summary.empty ? '—' : fmtUsd(summary.equity_now);
   const ret = $('return');
   ret.textContent = summary.empty ? '—' : (summary.return_pct >= 0 ? '+' : '') + summary.return_pct.toFixed(2) + '%';
   ret.className = 'value ' + (summary.return_pct >= 0 ? 'pos' : 'neg');
-  $('drawdown').textContent = summary.empty ? '—' : summary.max_drawdown_pct.toFixed(2) + '%';
-  $('executed').textContent = summary.trades_executed ?? 0;
-  $('vetoed').textContent = summary.trades_vetoed ?? 0;
-  $('days').textContent = summary.empty ? '—' : summary.days_running.toFixed(1);
-
   const alpha = $('alpha');
   if (summary.alpha_pct == null) { alpha.textContent = '—'; alpha.className = 'value'; }
   else {
@@ -164,8 +277,12 @@ async function refresh() {
   $('win-rate').textContent = summary.win_rate_pct == null ? '—' : summary.win_rate_pct.toFixed(0) + '%';
   $('profit-factor').textContent = summary.profit_factor == null
     ? (summary.closed_trades > 0 ? '∞' : '—') : summary.profit_factor.toFixed(2);
+  $('drawdown').textContent = summary.empty ? '—' : summary.max_drawdown_pct.toFixed(2) + '%';
+  $('executed').textContent = summary.trades_executed ?? 0;
+  $('vetoed').textContent = summary.trades_vetoed ?? 0;
+  $('days').textContent = summary.empty ? '—' : summary.days_running.toFixed(1);
 
-  // ── critérios demo → real ──
+  // critérios
   if (summary.demo_report) {
     $('criteria-section').style.display = '';
     $('criteria').innerHTML = summary.demo_report.criteria.map(c =>
@@ -174,44 +291,45 @@ async function refresh() {
         ? '<li style="margin-top:8px" class="ok"><b>Critérios atingidos — apto à promoção ao modo real.</b></li>' : '');
   }
 
-  // ── gráfico de patrimônio (uma linha por mercado) ──
+  // gráfico — preto & dourado
   const markets = [...new Set(equity.map(e => e.market))];
-  const colors = {crypto: '#d29922', stocks: '#58a6ff'};
+  const colors = {crypto: '#B8923B', stocks: '#141414'};
   const datasets = markets.map(m => ({
     label: m === 'crypto' ? 'Cripto (Binance)' : 'Ações (Alpaca)',
     data: equity.filter(e => e.market === m).map(e => ({x: e.ts, y: e.equity_usd})),
-    borderColor: colors[m] || '#3fb950', backgroundColor: 'transparent',
-    pointRadius: 0, borderWidth: 2, tension: .25,
+    borderColor: colors[m] || '#1E7B45',
+    backgroundColor: m === 'crypto' ? 'rgba(184,146,59,.08)' : 'rgba(20,20,20,.05)',
+    fill: true, pointRadius: 0, borderWidth: 2.2, tension: .3,
   }));
   if (chart) chart.destroy();
   chart = new Chart($('equity-chart'), {
-    type: 'line',
-    data: {datasets},
+    type: 'line', data: {datasets},
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
       interaction: {mode: 'nearest', intersect: false},
       scales: {
-        x: {type: 'category', ticks: {color: '#8b949e', maxTicksLimit: 10,
+        x: {type: 'category', ticks: {color: '#74716A', maxTicksLimit: 10,
             callback: function(v) { return fmtTs(this.getLabelForValue(v)); }},
-            grid: {color: '#21262d'}},
-        y: {ticks: {color: '#8b949e', callback: v => '$' + v.toLocaleString()}, grid: {color: '#21262d'}},
+            grid: {color: '#F0EDE4'}},
+        y: {ticks: {color: '#74716A', callback: v => '$' + v.toLocaleString()}, grid: {color: '#F0EDE4'}},
       },
-      plugins: {legend: {labels: {color: '#e6edf3'}}},
+      plugins: {legend: {labels: {color: '#141414', usePointStyle: true}}},
     },
   });
 
-  // ── tabelas ──
+  // posições abertas
   $('positions').innerHTML = positions.map(p => `
     <tr>
       <td><b>${esc(p.symbol)}</b></td>
-      <td>${p.market === 'crypto' ? '🪙 cripto' : '📊 ações'}</td>
+      <td>${mkt(p.market)}</td>
       <td>${fmtUsd(p.notional_usd)}</td>
       <td>${fmtUsd(p.avg_price)}</td>
       <td>${fmtUsd(p.last_price)}</td>
-      <td class="${p.pnl_pct >= 0 ? 'pos' : 'neg'}">${(p.pnl_pct >= 0 ? '+' : '') + p.pnl_pct.toFixed(2)}%</td>
+      <td class="${p.pnl_pct >= 0 ? 'pos' : 'neg'}"><b>${(p.pnl_pct >= 0 ? '+' : '') + p.pnl_pct.toFixed(2)}%</b></td>
       <td class="hide-sm muted">${esc(p.thesis)}</td>
     </tr>`).join('') || '<tr><td colspan="7" class="muted">nenhuma posição aberta</td></tr>';
 
+  // encerradas
   const exitLabels = {stop_loss: '🛑 stop-loss', take_profit: '🎯 take-profit',
                       trailing_stop: '📉 trailing stop', decisao_ia: '🧠 decisão da IA'};
   $('realized').innerHTML = realized.map(r => `
@@ -220,35 +338,49 @@ async function refresh() {
       <td><b>${esc(r.symbol)}</b></td>
       <td>${fmtUsd(r.avg_price)}</td>
       <td>${fmtUsd(r.exit_price)}</td>
-      <td class="${r.pnl_usd >= 0 ? 'pos' : 'neg'}">${(r.pnl_usd >= 0 ? '+' : '−') + fmtUsd(Math.abs(r.pnl_usd))}</td>
+      <td class="${r.pnl_usd >= 0 ? 'pos' : 'neg'}"><b>${(r.pnl_usd >= 0 ? '+' : '−') + fmtUsd(Math.abs(r.pnl_usd))}</b></td>
       <td class="${r.pnl_pct >= 0 ? 'pos' : 'neg'}">${(r.pnl_pct >= 0 ? '+' : '') + r.pnl_pct.toFixed(2)}%</td>
       <td>${exitLabels[r.reason] || esc(r.reason)}</td>
     </tr>`).join('') || '<tr><td colspan="7" class="muted">nenhuma posição encerrada ainda</td></tr>';
 
+  // calibração
+  const calRows = Object.entries(calibration || {});
+  if (calRows.length) {
+    $('calibration-section').style.display = '';
+    const order = {high: 0, medium: 1, low: 2};
+    const names = {high: 'Alta', medium: 'Média', low: 'Baixa'};
+    $('calibration').innerHTML = calRows
+      .sort((a, b) => (order[a[0]] ?? 9) - (order[b[0]] ?? 9))
+      .map(([conf, d]) => `
+      <tr>
+        <td><b>${names[conf] || conf}</b></td>
+        <td>${d.trades}</td>
+        <td class="${(d.win_rate_pct ?? 0) >= 50 ? 'pos' : 'neg'}">${d.win_rate_pct == null ? '—' : d.win_rate_pct.toFixed(0) + '%'}</td>
+        <td class="${(d.avg_pnl_pct ?? 0) >= 0 ? 'pos' : 'neg'}">${d.avg_pnl_pct == null ? '—' : (d.avg_pnl_pct >= 0 ? '+' : '') + d.avg_pnl_pct.toFixed(2) + '%'}</td>
+      </tr>`).join('');
+  }
+
+  // lições
+  if (lessons && lessons.lessons_text) {
+    $('lessons-section').style.display = '';
+    $('lessons').textContent = lessons.lessons_text;
+  }
+
+  // operações
   $('trades').innerHTML = trades.map(t => `
     <tr>
       <td>${fmtTs(t.ts)}</td>
-      <td>${t.market === 'crypto' ? '🪙 cripto' : '📊 ações'}</td>
+      <td>${mkt(t.market)}</td>
       <td><b>${esc(t.symbol)}</b></td>
       <td class="side-${t.side}">${t.side === 'buy' ? 'COMPRA' : 'VENDA'}</td>
       <td>${fmtUsd(t.notional_usd)}</td>
-      <td class="${t.approved ? 'ok' : 'veto'}">${t.approved ? '✔ executada' : '🚫 vetada'}</td>
+      <td class="${t.approved ? 'ok' : 'veto'}">${t.approved ? '✔ executada' : '✖ vetada'}</td>
       <td class="hide-sm muted">${esc(t.approved ? t.rationale : t.reason + ' — ' + t.rationale)}</td>
     </tr>`).join('') || '<tr><td colspan="7" class="muted">nenhuma operação ainda</td></tr>';
 
-  $('decisions').innerHTML = decisions.map(d => `
-    <tr>
-      <td>${fmtTs(d.ts)}</td>
-      <td>${d.market === 'crypto' ? '🪙 cripto' : '📊 ações'}</td>
-      <td>${esc(d.market_view)}</td>
-      <td>${d.orders_proposed}</td>
-    </tr>`).join('') || '<tr><td colspan="4" class="muted">nenhuma decisão ainda</td></tr>';
-
-  $('research').innerHTML = research.map(r => `
-    <details>
-      <summary>${fmtTs(r.ts)} · ${r.market === 'crypto' ? '🪙 cripto' : '📊 ações'}</summary>
-      <pre>${esc(r.briefing)}</pre>
-    </details>`).join('') || '<p class="muted">nenhum briefing ainda</p>';
+  // histórico
+  historyItems = history;
+  renderTimeline();
 }
 
 refresh();

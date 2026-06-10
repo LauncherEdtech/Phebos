@@ -139,6 +139,76 @@ def decisions(mode: str | None = None, limit: int = 50):
     return [dict(r) for r in rows]
 
 
+@app.get("/api/history")
+def history(mode: str | None = None, limit: int = 300):
+    """Linha do tempo unificada do bot: leituras (briefings), pensamentos
+    (decisões), operações, resultados (P&L) e reflexões (lições)."""
+    mode = mode or _mode()
+    if not DB_PATH.exists():
+        return []
+    conn = _conn()
+    items: list[dict] = []
+
+    for r in conn.execute(
+            "SELECT ts, market, briefing FROM research WHERE mode=? ORDER BY ts DESC LIMIT ?",
+            (mode, limit)):
+        items.append({"ts": r["ts"], "type": "leitura", "market": r["market"],
+                      "title": "Leitura de mercado (pesquisador)", "body": r["briefing"]})
+
+    for r in conn.execute(
+            "SELECT ts, market, market_view, orders_proposed FROM decisions"
+            " WHERE mode=? ORDER BY ts DESC LIMIT ?", (mode, limit)):
+        items.append({"ts": r["ts"], "type": "pensamento", "market": r["market"],
+                      "title": f"Pensamento — {r['orders_proposed']} ordem(ns) proposta(s)",
+                      "body": r["market_view"]})
+
+    for r in conn.execute(
+            "SELECT ts, market, symbol, side, notional_usd, approved, reason, rationale"
+            " FROM trades WHERE mode=? ORDER BY ts DESC LIMIT ?", (mode, limit)):
+        verb = "Compra" if r["side"] == "buy" else "Venda"
+        status = "executada" if r["approved"] else "VETADA"
+        items.append({"ts": r["ts"], "type": "operacao", "market": r["market"],
+                      "title": f"{verb} {r['symbol']} ${r['notional_usd']:.2f} — {status}",
+                      "body": r["rationale"] if r["approved"]
+                              else f"Veto: {r['reason']} | Justificativa da IA: {r['rationale']}",
+                      "approved": bool(r["approved"]), "side": r["side"]})
+
+    for r in conn.execute(
+            "SELECT ts, market, symbol, pnl_usd, pnl_pct, reason FROM realized"
+            " WHERE mode=? ORDER BY ts DESC LIMIT ?", (mode, limit)):
+        items.append({"ts": r["ts"], "type": "resultado", "market": r["market"],
+                      "title": f"Posição encerrada {r['symbol']}: "
+                               f"{'+' if r['pnl_usd'] >= 0 else ''}{r['pnl_usd']:.2f} USD "
+                               f"({r['pnl_pct']:+.2f}%)",
+                      "body": f"Motivo da saída: {r['reason']}",
+                      "pnl_usd": r["pnl_usd"]})
+
+    for r in conn.execute(
+            "SELECT ts, lessons_text FROM lessons WHERE mode=? ORDER BY ts DESC LIMIT 10",
+            (mode,)):
+        items.append({"ts": r["ts"], "type": "reflexao", "market": "geral",
+                      "title": "Auto-reflexão — lições aprendidas", "body": r["lessons_text"]})
+
+    items.sort(key=lambda i: i["ts"], reverse=True)
+    return items[:limit]
+
+
+@app.get("/api/lessons")
+def lessons(mode: str | None = None):
+    mode = mode or _mode()
+    if not DB_PATH.exists():
+        return None
+    return Journal(DB_PATH).latest_lessons(mode)
+
+
+@app.get("/api/calibration")
+def calibration(mode: str | None = None):
+    mode = mode or _mode()
+    if not DB_PATH.exists():
+        return {}
+    return Journal(DB_PATH).confidence_calibration(mode)
+
+
 @app.get("/api/research")
 def research(mode: str | None = None, limit: int = 20):
     mode = mode or _mode()

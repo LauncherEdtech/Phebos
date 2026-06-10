@@ -18,12 +18,14 @@ from .brokers.base import Broker
 from .brokers.binance import BinanceBroker
 from .config import Settings, kill_switch_active, load_settings
 from .evaluation import evaluate_demo, print_report
-from .indicators import compute_indicators
+from .indicators import atr_by_symbol, compute_indicators
+from .intelligence import get_daily_calendar, maybe_reflect
 from .journal import Journal
 from .news import fetch_headlines, format_headlines
 from .notify import Notifier
 from .risk import RiskEngine
 from .schemas import OrderDecision
+from . import sentiment as sentiment_mod
 
 log = logging.getLogger("phebos")
 
@@ -43,6 +45,13 @@ def build_brokers(settings: Settings) -> list[tuple[Broker, list[str]]]:
 
 def run_cycle(settings: Settings, brokers, analyst: Analyst, risk: RiskEngine,
               journal: Journal, notifier: Notifier) -> None:
+    # inteligência global do ciclo: calendário (cache diário) e auto-reflexão
+    all_symbols = [s for _, syms in brokers for s in syms]
+    calendar_text = get_daily_calendar(journal, analyst, all_symbols,
+                                       settings.calendar_enabled)
+    lessons_text = maybe_reflect(journal, analyst, settings.mode,
+                                 settings.reflection_every_days)
+
     for broker, symbols in brokers:
         market = broker.market
         try:
@@ -93,15 +102,32 @@ def run_cycle(settings: Settings, brokers, analyst: Analyst, risk: RiskEngine,
             log.info("[%s] briefing: %s", market,
                      briefing[:300].replace("\n", " ") + ("…" if len(briefing) > 300 else ""))
 
-            # 5) indicadores técnicos dos candles
+            # 5) indicadores multi-timeframe + regime do mercado
             indicators = compute_indicators(snapshot)
+            regime = indicators.get("_market_regime", "lateral")
+            log.info("[%s] regime do mercado: %s", market, regime)
 
-            # 6) decisão estruturada com MEMÓRIA (teses, decisões e eventos já operados)
+            # 6) sentimento social (Reddit / StockTwits / Fear & Greed)
+            sentiment_text = ""
+            if settings.sentiment_enabled:
+                sentiment_text = sentiment_mod.collect(
+                    market, symbols, settings.reddit_subs_for(market))
+
+            # 7) decisão estruturada com MEMÓRIA + inteligência adicional
             open_positions = journal.get_open_positions(settings.mode, market)
             recent = journal.recent_decisions(settings.mode, market, limit=5)
             acted = journal.recent_events(settings.mode, settings.risk.event_dedup_days)
-            decision = analyst.decide(snapshot, indicators, briefing, risk.summary(),
-                                      open_positions, recent, acted)
+            context = {
+                "open_positions": open_positions,
+                "recent_decisions": recent,
+                "acted_events": acted,
+                "lessons": lessons_text,
+                "calibration": journal.confidence_calibration(settings.mode),
+                "calendar": calendar_text,
+                "sentiment": sentiment_text,
+            }
+            decision = analyst.decide(snapshot, indicators, briefing,
+                                      risk.summary(), context)
             journal.log_decision(settings.mode, market, decision.market_view, len(decision.orders))
             log.info("[%s] análise: %s", market, decision.market_view)
 
@@ -111,7 +137,13 @@ def run_cycle(settings: Settings, brokers, analyst: Analyst, risk: RiskEngine,
 
             daily_pnl = journal.daily_pnl_pct(settings.mode, market)
             acted_keys = {(e["symbol"], e["side"], e["event_key"]) for e in acted}
-            verdicts = risk.review(decision.orders, snapshot, symbols, daily_pnl, acted_keys)
+            loss_streak = journal.losing_streak(settings.mode)
+            if loss_streak >= settings.risk.loss_streak_threshold:
+                log.warning("[%s] anti-tilt ativo: %d perdas consecutivas — sizing reduzido",
+                            market, loss_streak)
+            verdicts = risk.review(decision.orders, snapshot, symbols, daily_pnl,
+                                   acted_keys, atr_by_symbol(indicators), regime,
+                                   loss_streak)
             for v in verdicts:
                 o = v.order
                 if not v.approved:
@@ -135,7 +167,8 @@ def run_cycle(settings: Settings, brokers, analyst: Analyst, risk: RiskEngine,
                 if price:
                     if o.side == "buy":
                         journal.record_buy(settings.mode, market, o.symbol,
-                                           o.notional_usd, price, o.rationale)
+                                           o.notional_usd, price, o.rationale,
+                                           o.confidence)
                     else:
                         pnl_usd, pnl_pct = journal.record_sell(
                             settings.mode, market, o.symbol, o.notional_usd,

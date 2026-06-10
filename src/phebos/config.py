@@ -27,6 +27,9 @@ class RiskConfig:
     take_profit_pct: float = 15.0    # venda forçada se subir X% acima do preço médio
     trailing_stop_pct: float = 0.0   # venda se cair X% abaixo do pico (0 = desativado)
     event_dedup_days: int = 3        # não operar o mesmo evento de notícia por X dias
+    vol_target_atr_pct: float = 4.0  # ATR de referência p/ sizing (ativo mais volátil → posição menor)
+    loss_streak_threshold: int = 3   # perdas consecutivas que ativam o circuit breaker anti-tilt
+    loss_streak_factor: float = 0.5  # fator de redução do sizing durante o tilt
 
 
 @dataclass
@@ -66,6 +69,13 @@ class Settings:
     analyst_extra_instructions: str
     analyst_web_search: bool
     telegram_enabled: bool
+    sentiment_enabled: bool = True
+    reddit_subs: dict = field(default_factory=dict)  # {"crypto": [...], "stocks": [...]}
+    calendar_enabled: bool = True
+    reflection_every_days: int = 7
+
+    def reddit_subs_for(self, market: str) -> List[str]:
+        return list(self.reddit_subs.get(market, []))
 
     @property
     def is_live(self) -> bool:
@@ -121,6 +131,10 @@ def load_settings(path: Path | None = None) -> Settings:
         analyst_extra_instructions=analyst.get("extra_instructions", "") or "",
         analyst_web_search=bool(analyst.get("web_search", True)),
         telegram_enabled=bool(raw.get("notifications", {}).get("telegram", True)),
+        sentiment_enabled=bool(raw.get("sentiment", {}).get("enabled", True)),
+        reddit_subs=raw.get("sentiment", {}).get("reddit_subs", {}) or {},
+        calendar_enabled=bool(raw.get("calendar", {}).get("enabled", True)),
+        reflection_every_days=int(raw.get("reflection", {}).get("every_days", 7)),
     )
 
 
