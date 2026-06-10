@@ -5,3 +5,4 @@ phebos.db
 KILL
 .venv/
 venv/
+*.egg-info/
