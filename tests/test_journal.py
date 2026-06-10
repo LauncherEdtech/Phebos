@@ -168,3 +168,21 @@ def test_losing_streak(journal):
     journal.record_buy("demo", "crypto", "W", 100, 100.0, "t")
     journal.record_sell("demo", "crypto", "W", 120, 120.0, "tp")  # vitória zera
     assert journal.losing_streak("demo") == 0
+
+
+# ── logs do agente ──────────────────────────────────────────────────
+def test_logs_escrita_e_leitura(journal):
+    journal.write_log("INFO", "ciclo iniciado")
+    journal.write_log("WARNING", "ordem vetada")
+    logs = journal.get_logs()
+    assert len(logs) == 2 and logs[0]["message"] == "ordem vetada"  # mais novo primeiro
+    assert journal.get_logs(level="WARNING")[0]["level"] == "WARNING"
+    assert len(journal.get_logs(level="ERROR")) == 0
+
+
+def test_logs_prune_mantem_ultimos(journal):
+    for i in range(30):
+        journal.write_log("INFO", f"linha {i}")
+    journal.prune_logs(keep=10)
+    logs = journal.get_logs(limit=100)
+    assert len(logs) == 10 and logs[0]["message"] == "linha 29"

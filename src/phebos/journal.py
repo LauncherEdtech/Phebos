@@ -104,6 +104,12 @@ CREATE TABLE IF NOT EXISTS calendar_cache (
     date TEXT NOT NULL UNIQUE,
     text TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts TEXT NOT NULL,
+    level TEXT NOT NULL,
+    message TEXT NOT NULL
+);
 """
 
 # Migrações de colunas para bancos criados em versões anteriores
@@ -409,6 +415,35 @@ class Journal:
         ).fetchall()
         return [{"ts": r[0], "market": r[1], "symbol": r[2], "pnl_usd": r[3], "pnl_pct": r[4],
                  "reason": r[5], "thesis": r[6], "confidence": r[7]} for r in rows]
+
+    # ── logs do agente (exibidos no dashboard) ──────────────────────
+    def write_log(self, level: str, message: str) -> None:
+        self.conn.execute(
+            "INSERT INTO logs (ts, level, message) VALUES (?,?,?)",
+            (_now(), level, message),
+        )
+        self.conn.commit()
+
+    def get_logs(self, limit: int = 300, level: str | None = None) -> list[dict]:
+        if level:
+            rows = self.conn.execute(
+                "SELECT ts, level, message FROM logs WHERE level=? ORDER BY id DESC LIMIT ?",
+                (level, limit),
+            ).fetchall()
+        else:
+            rows = self.conn.execute(
+                "SELECT ts, level, message FROM logs ORDER BY id DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [{"ts": r[0], "level": r[1], "message": r[2]} for r in rows]
+
+    def prune_logs(self, keep: int = 5000) -> None:
+        """Mantém só as últimas N linhas para o banco não crescer sem limite."""
+        self.conn.execute(
+            "DELETE FROM logs WHERE id NOT IN (SELECT id FROM logs ORDER BY id DESC LIMIT ?)",
+            (keep,),
+        )
+        self.conn.commit()
 
     # ── calendário econômico (cache diário) ─────────────────────────
     def get_calendar(self, date: str) -> str | None:

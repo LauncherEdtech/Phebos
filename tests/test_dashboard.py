@@ -78,3 +78,33 @@ def test_lessons_endpoint(client):
 def test_pagina_html(client):
     html = client.get("/").text
     assert "Phebos" in html and "Histórico" in html
+
+
+def test_logs_endpoint(client, tmp_path):
+    import phebos.journal
+    j = phebos.journal.Journal()
+    j.write_log("INFO", "ciclo ok")
+    j.write_log("ERROR", "deu ruim")
+    logs = client.get("/api/logs").json()
+    assert logs[0]["message"] == "deu ruim"
+    only_err = client.get("/api/logs?level=ERROR").json()
+    assert len(only_err) == 1 and only_err[0]["level"] == "ERROR"
+
+
+def test_keys_endpoints(client, monkeypatch):
+    # status inicial mascarado
+    st = client.get("/api/keys/status").json()
+    assert "GEMINI_API_KEY" in st
+    # salvar
+    r = client.post("/api/keys", json={"GEMINI_API_KEY": "AIzaTeste12345678"}).json()
+    assert r["saved"] == ["GEMINI_API_KEY"]
+    assert r["status"]["GEMINI_API_KEY"]["set"] is True
+    assert "Teste1234" not in r["status"]["GEMINI_API_KEY"]["preview"]
+    # testar conexões (mocka os testadores para não bater na rede)
+    import phebos.keys as keys_mod
+    monkeypatch.setattr(keys_mod, "test_gemini", lambda: {"ok": True, "detail": "ok"})
+    monkeypatch.setattr(keys_mod, "test_binance", lambda: {"ok": None, "detail": "sem chave"})
+    monkeypatch.setattr(keys_mod, "test_alpaca", lambda: {"ok": None, "detail": "sem chave"})
+    monkeypatch.setattr(keys_mod, "test_telegram", lambda: {"ok": False, "detail": "token inválido"})
+    results = client.post("/api/keys/test").json()
+    assert results["gemini"]["ok"] is True and results["telegram"]["ok"] is False

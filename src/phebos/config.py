@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = Path(os.environ.get("PHEBOS_DATA_DIR", str(ROOT)))
 KILL_FILE = DATA_DIR / "KILL"
 DB_PATH = DATA_DIR / "phebos.db"
+# Chaves salvas pelo dashboard (aba Conexões) — têm prioridade sobre o .env
+SECRETS_FILE = DATA_DIR / "secrets.env"
 
 LIVE_CONFIRMATION = "EU_ACEITO_O_RISCO"
 
@@ -100,6 +102,7 @@ class Settings:
 
 def load_settings(path: Path | None = None) -> Settings:
     load_dotenv(ROOT / ".env")
+    load_dotenv(SECRETS_FILE, override=True)  # chaves do dashboard prevalecem
     raw = yaml.safe_load((path or ROOT / "config.yaml").read_text())
 
     mode = raw.get("mode", "demo")

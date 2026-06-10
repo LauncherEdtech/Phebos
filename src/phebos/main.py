@@ -16,7 +16,7 @@ from .analyst import Analyst
 from .brokers.alpaca import AlpacaBroker
 from .brokers.base import Broker
 from .brokers.binance import BinanceBroker
-from .config import Settings, kill_switch_active, load_settings
+from .config import SECRETS_FILE, Settings, kill_switch_active, load_settings
 from .evaluation import evaluate_demo, print_report
 from .indicators import atr_by_symbol, compute_indicators
 from .intelligence import get_daily_calendar, maybe_reflect
@@ -28,6 +28,26 @@ from .schemas import OrderDecision
 from . import sentiment as sentiment_mod
 
 log = logging.getLogger("phebos")
+
+
+class JournalLogHandler(logging.Handler):
+    """Espelha os logs do agente no SQLite para a aba 'Logs' do dashboard.
+
+    Falhas de escrita são engolidas — registrar log nunca pode derrubar o ciclo.
+    """
+
+    def __init__(self, journal: Journal):
+        super().__init__(level=logging.INFO)
+        self.journal = journal
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            message = record.getMessage()
+            if record.exc_info and record.exc_info[1] is not None:
+                message += f" | {record.exc_info[0].__name__}: {record.exc_info[1]}"
+            self.journal.write_log(record.levelname, message)
+        except Exception:
+            pass
 
 
 def build_brokers(settings: Settings) -> list[tuple[Broker, list[str]]]:
@@ -202,6 +222,10 @@ def main() -> None:
         print_report(evaluate_demo(journal, settings.demo))
         return
 
+    # logs do agente também vão para o banco (aba "Logs" do dashboard)
+    logging.getLogger().addHandler(JournalLogHandler(journal))
+    journal.prune_logs()
+
     brokers = build_brokers(settings)
     analyst = Analyst(
         settings.analyst_model,
@@ -224,8 +248,32 @@ def main() -> None:
         print(f"Comando desconhecido: {command} (use run | once | evaluate | dashboard)")
         sys.exit(1)
 
+    def secrets_mtime() -> float:
+        try:
+            return SECRETS_FILE.stat().st_mtime
+        except FileNotFoundError:
+            return 0.0
+
+    last_secrets = secrets_mtime()
     while True:
         run_cycle(settings, brokers, analyst, risk, journal, notifier)
+        journal.prune_logs()
+
+        # chaves salvas pela aba Conexões do dashboard → recarrega sem reiniciar
+        if secrets_mtime() != last_secrets:
+            last_secrets = secrets_mtime()
+            log.info("chaves atualizadas pelo dashboard — recarregando conexões")
+            try:
+                settings = load_settings()
+                brokers = build_brokers(settings)
+                analyst = Analyst(settings.analyst_model,
+                                  settings.analyst_extra_instructions,
+                                  web_search=settings.analyst_web_search)
+                notifier = Notifier(settings.telegram_enabled)
+                log.info("conexões recarregadas com sucesso")
+            except Exception:
+                log.exception("falha ao recarregar chaves — mantendo configuração anterior")
+
         time.sleep(settings.interval_minutes * 60)
 
 

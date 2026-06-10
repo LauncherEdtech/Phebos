@@ -209,6 +209,37 @@ def calibration(mode: str | None = None):
     return Journal(DB_PATH).confidence_calibration(mode)
 
 
+@app.get("/api/keys/status")
+def keys_status():
+    """Quais chaves estão configuradas (apenas prévia mascarada — nunca o valor)."""
+    from . import keys
+    return keys.masked_status()
+
+
+@app.post("/api/keys")
+def keys_save(payload: dict):
+    """Salva chaves não vazias em DATA_DIR/secrets.env (o agente recarrega no
+    próximo ciclo). Nunca apaga uma chave existente — só sobrescreve."""
+    from . import keys
+    saved = keys.save_secrets(payload or {})
+    return {"saved": saved, "status": keys.masked_status()}
+
+
+@app.post("/api/keys/test")
+def keys_test():
+    """Testa as conexões com 1 chamada barata por serviço configurado."""
+    from . import keys
+    return keys.run_tests()
+
+
+@app.get("/api/logs")
+def logs(limit: int = 300, level: str | None = None):
+    """Logs do agente (gravados pelo JournalLogHandler), mais novos primeiro."""
+    if not DB_PATH.exists():
+        return []
+    return Journal(DB_PATH).get_logs(limit, level)
+
+
 @app.get("/api/research")
 def research(mode: str | None = None, limit: int = 20):
     mode = mode or _mode()

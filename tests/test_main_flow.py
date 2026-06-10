@@ -164,3 +164,33 @@ def test_fluxo_redimensionamento_aplicado_na_execucao(journal):
     run(make_settings(), broker, analyst, journal)
     assert len(broker.executed) == 1
     assert broker.executed[0].notional_usd <= 50.0  # redimensionada p/ teto
+
+
+def test_journal_log_handler_espelha_logs(journal):
+    import logging as logmod
+    handler = pm.JournalLogHandler(journal)
+    logger = logmod.getLogger("phebos.teste")
+    logger.addHandler(handler)
+    logger.setLevel(logmod.INFO)
+    logmod.disable(logmod.NOTSET)  # reabilita (módulo desativa no topo)
+    try:
+        logger.info("mensagem %s", "formatada")
+        logger.error("falhou", exc_info=(ValueError, ValueError("x"), None))
+    finally:
+        logmod.disable(logmod.CRITICAL)
+        logger.removeHandler(handler)
+    logs = journal.get_logs()
+    assert any("mensagem formatada" in l["message"] for l in logs)
+    assert any("ValueError" in l["message"] for l in logs)
+
+
+def test_log_handler_tolera_journal_quebrado():
+    import logging as logmod
+
+    class BrokenJournal:
+        def write_log(self, *a):
+            raise RuntimeError("banco fora")
+
+    handler = pm.JournalLogHandler(BrokenJournal())
+    record = logmod.LogRecord("x", logmod.INFO, "f", 1, "msg", None, None)
+    handler.emit(record)  # não pode levantar exceção

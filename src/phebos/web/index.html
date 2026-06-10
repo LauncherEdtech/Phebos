@@ -99,6 +99,47 @@
   .titem.tipo-resultado.loss { border-left: 3px solid var(--red); }
   .titem.tipo-reflexao { border-left: 3px solid var(--gold-dark); background: var(--gold-soft); }
 
+  /* ── logs (terminal) ── */
+  .terminal { background: #141414; border-radius: 10px; border: 1px solid #2A2A2A;
+              border-top: 3px solid var(--gold); padding: 14px 16px;
+              max-height: 70vh; overflow-y: auto;
+              font: 12.5px/1.7 "Cascadia Code", Consolas, Menlo, monospace; }
+  .logline { white-space: pre-wrap; word-break: break-word; color: #C9C5BC; }
+  .logline .lts { color: #6E6A62; }
+  .logline.lv-INFO .llv { color: var(--gold); }
+  .logline.lv-WARNING { color: #E8C778; } .logline.lv-WARNING .llv { color: #E8C778; font-weight: 700; }
+  .logline.lv-ERROR, .logline.lv-CRITICAL { color: #F08A80; }
+  .logline.lv-ERROR .llv, .logline.lv-CRITICAL .llv { color: #F08A80; font-weight: 700; }
+  .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+              background: var(--green); margin-right: 6px;
+              animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+  /* ── conexões (chaves) ── */
+  .keygroup { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px;
+              margin-bottom: 14px; background: #fff; }
+  .keygroup h3 { font-family: Georgia, serif; font-size: 15px; margin-bottom: 4px; }
+  .keygroup .hint { color: var(--muted); font-size: 12.5px; margin-bottom: 10px; }
+  .keygroup .hint a { color: var(--gold-dark); }
+  .keyrow { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  .keyrow label { width: 230px; font-size: 12.5px; font-weight: 600; color: #3A3833; }
+  .keyrow input { flex: 1; min-width: 220px; padding: 9px 12px; border: 1px solid var(--line);
+                  border-radius: 8px; font: 13px Consolas, monospace; background: #FCFBF8; }
+  .keyrow input:focus { outline: none; border-color: var(--gold); }
+  .kstatus { font-size: 11.5px; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .kstatus.on { background: #E7F3EB; color: var(--green); }
+  .kstatus.off { background: #F4F1EA; color: var(--muted); }
+  .btn { border: none; border-radius: 8px; padding: 11px 22px; font: 600 14px/1 inherit;
+         cursor: pointer; }
+  .btn.gold { background: var(--gold); color: #141414; }
+  .btn.dark { background: #141414; color: var(--gold); }
+  .btn:disabled { opacity: .5; cursor: wait; }
+  .test-result { display: flex; gap: 10px; align-items: baseline; padding: 8px 12px;
+                 border-radius: 8px; margin-top: 8px; font-size: 13.5px; }
+  .test-result.ok { background: #E7F3EB; } .test-result.fail { background: #FBEAE8; }
+  .test-result.skip { background: #F4F1EA; color: var(--muted); }
+  #save-msg { font-size: 13px; margin-left: 12px; }
+
   footer { color: var(--muted); font-size: 12px; text-align: center; padding: 18px; }
   @media (max-width: 700px) { .hide-sm { display: none; } }
 </style>
@@ -113,6 +154,8 @@
 <nav class="tabs">
   <button class="tab active" data-view="overview">Visão geral</button>
   <button class="tab" data-view="history">Histórico do bot</button>
+  <button class="tab" data-view="logs">Logs ao vivo</button>
+  <button class="tab" data-view="keys">Conexões</button>
 </nav>
 
 <main>
@@ -199,6 +242,80 @@
     <div class="timeline" id="timeline"></div>
   </section>
 </div>
+
+<!-- ═══════════ LOGS ═══════════ -->
+<div class="view" id="view-logs">
+  <section>
+    <h2><span class="tag">§</span> Logs do agente
+      <span class="muted" style="font-size:13px"><span class="live-dot"></span>atualiza a cada 10s</span></h2>
+    <div class="filters" id="log-filters">
+      <button class="chip active" data-lf="">Tudo</button>
+      <button class="chip" data-lf="INFO">Info</button>
+      <button class="chip" data-lf="WARNING">Avisos</button>
+      <button class="chip" data-lf="ERROR">Erros</button>
+    </div>
+    <div class="terminal" id="logbox"><span class="muted">carregando logs…</span></div>
+  </section>
+</div>
+
+<!-- ═══════════ CONEXÕES ═══════════ -->
+<div class="view" id="view-keys">
+  <section>
+    <h2><span class="tag">§</span> Chaves de API
+      <span class="muted" style="font-size:13px">— salve e o agente recarrega sozinho no próximo ciclo</span></h2>
+
+    <div class="keygroup">
+      <h3>🧠 Gemini <span class="kstatus off" id="st-GEMINI_API_KEY">—</span></h3>
+      <div class="hint">O cérebro do agente (obrigatória). Crie grátis em
+        <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></div>
+      <div class="keyrow"><label>GEMINI_API_KEY</label>
+        <input type="password" id="k-GEMINI_API_KEY" placeholder="cole a chave aqui"></div>
+    </div>
+
+    <div class="keygroup">
+      <h3>🪙 Binance Testnet <span class="kstatus off" id="st-BINANCE_TESTNET_API_KEY">—</span></h3>
+      <div class="hint">Cripto com dinheiro fictício. Crie em
+        <a href="https://testnet.binance.vision" target="_blank">testnet.binance.vision</a></div>
+      <div class="keyrow"><label>BINANCE_TESTNET_API_KEY</label>
+        <input type="password" id="k-BINANCE_TESTNET_API_KEY" placeholder="API key"></div>
+      <div class="keyrow"><label>BINANCE_TESTNET_API_SECRET</label>
+        <input type="password" id="k-BINANCE_TESTNET_API_SECRET" placeholder="API secret"></div>
+    </div>
+
+    <div class="keygroup">
+      <h3>📊 Alpaca Paper <span class="kstatus off" id="st-ALPACA_PAPER_API_KEY">—</span></h3>
+      <div class="hint">Ações dos EUA com dinheiro fictício. Crie em
+        <a href="https://alpaca.markets" target="_blank">alpaca.markets</a> (API Keys → Paper)</div>
+      <div class="keyrow"><label>ALPACA_PAPER_API_KEY</label>
+        <input type="password" id="k-ALPACA_PAPER_API_KEY" placeholder="API key"></div>
+      <div class="keyrow"><label>ALPACA_PAPER_API_SECRET</label>
+        <input type="password" id="k-ALPACA_PAPER_API_SECRET" placeholder="API secret"></div>
+    </div>
+
+    <div class="keygroup">
+      <h3>📱 Telegram <span class="kstatus off" id="st-TELEGRAM_BOT_TOKEN">—</span></h3>
+      <div class="hint">Avisos de trades no celular (opcional). Crie o bot com o @BotFather;
+        o teste envia uma mensagem real para confirmar.</div>
+      <div class="keyrow"><label>TELEGRAM_BOT_TOKEN</label>
+        <input type="password" id="k-TELEGRAM_BOT_TOKEN" placeholder="token do bot"></div>
+      <div class="keyrow"><label>TELEGRAM_CHAT_ID</label>
+        <input type="text" id="k-TELEGRAM_CHAT_ID" placeholder="seu chat id (número)"></div>
+    </div>
+
+    <div style="margin-top: 16px">
+      <button class="btn gold" id="btn-save">💾 Salvar chaves</button>
+      <button class="btn dark" id="btn-test">🧪 Testar conexões</button>
+      <span id="save-msg"></span>
+    </div>
+    <div id="test-results" style="margin-top: 14px"></div>
+
+    <p class="muted" style="margin-top:16px; font-size:12.5px">
+      🔒 As chaves são gravadas em <code>secrets.env</code> (permissão restrita) no volume
+      do sistema e nunca aparecem completas nesta tela — só uma prévia mascarada.
+      Chaves de dinheiro REAL não podem ser definidas por aqui (apenas via .env, por segurança).
+    </p>
+  </section>
+</div>
 </main>
 
 <footer>Phebos · atualiza automaticamente a cada 60s</footer>
@@ -228,6 +345,29 @@ document.querySelectorAll('.chip').forEach(chip => chip.onclick = () => {
 });
 
 async function getJSON(url) { const r = await fetch(url); return r.json(); }
+
+// ── logs ao vivo ──
+let logLevel = '';
+document.querySelectorAll('#log-filters .chip').forEach(chip => chip.onclick = () => {
+  document.querySelectorAll('#log-filters .chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  logLevel = chip.dataset.lf;
+  refreshLogs();
+});
+
+const fmtLogTs = ts => new Date(ts).toLocaleString('pt-BR',
+  {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'});
+
+async function refreshLogs() {
+  try {
+    const logs = await getJSON('/api/logs?limit=300' + (logLevel ? '&level=' + logLevel : ''));
+    $('logbox').innerHTML = logs.length
+      ? logs.map(l => `<div class="logline lv-${l.level}">` +
+          `<span class="lts">${fmtLogTs(l.ts)}</span> ` +
+          `<span class="llv">${l.level.padEnd(7)}</span> ${esc(l.message)}</div>`).join('')
+      : '<span class="muted">nenhum log ainda — o agente grava aqui assim que roda um ciclo</span>';
+  } catch (e) { /* dashboard segue funcionando mesmo se o fetch falhar */ }
+}
 
 const HICONS = {leitura: '🔎', pensamento: '🧠', operacao: '💱', resultado: '🏁', reflexao: '📚'};
 function renderTimeline() {
@@ -383,8 +523,74 @@ async function refresh() {
   renderTimeline();
 }
 
+// ── conexões (chaves de API) ──
+const KEY_FIELDS = ['GEMINI_API_KEY', 'BINANCE_TESTNET_API_KEY', 'BINANCE_TESTNET_API_SECRET',
+                    'ALPACA_PAPER_API_KEY', 'ALPACA_PAPER_API_SECRET',
+                    'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID'];
+
+async function loadKeysStatus() {
+  try {
+    const st = await getJSON('/api/keys/status');
+    for (const field of KEY_FIELDS) {
+      const badge = $('st-' + field);
+      if (badge) {
+        badge.textContent = st[field].set ? '● configurada (' + st[field].preview + ')' : '○ não configurada';
+        badge.className = 'kstatus ' + (st[field].set ? 'on' : 'off');
+      }
+      const input = $('k-' + field);
+      if (input && st[field].set) input.placeholder = st[field].preview + ' (já salva — preencha para trocar)';
+    }
+  } catch (e) {}
+}
+
+$('btn-save').onclick = async () => {
+  const payload = {};
+  for (const field of KEY_FIELDS) {
+    const value = $('k-' + field)?.value.trim();
+    if (value) payload[field] = value;
+  }
+  if (!Object.keys(payload).length) {
+    $('save-msg').textContent = 'nada para salvar — preencha ao menos um campo';
+    return;
+  }
+  $('btn-save').disabled = true;
+  try {
+    const r = await fetch('/api/keys', {method: 'POST',
+      headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+    const data = await r.json();
+    $('save-msg').innerHTML = `<span class="ok">✔ ${data.saved.length} chave(s) salva(s) — o agente recarrega no próximo ciclo</span>`;
+    KEY_FIELDS.forEach(f => { const i = $('k-' + f); if (i) i.value = ''; });
+    loadKeysStatus();
+  } catch (e) {
+    $('save-msg').innerHTML = '<span class="neg">✘ erro ao salvar</span>';
+  }
+  $('btn-save').disabled = false;
+};
+
+const TEST_LABELS = {gemini: '🧠 Gemini', binance: '🪙 Binance Testnet',
+                     alpaca: '📊 Alpaca Paper', telegram: '📱 Telegram'};
+$('btn-test').onclick = async () => {
+  $('btn-test').disabled = true;
+  $('test-results').innerHTML = '<p class="muted">testando conexões… (até ~20s)</p>';
+  try {
+    const r = await fetch('/api/keys/test', {method: 'POST'});
+    const results = await r.json();
+    $('test-results').innerHTML = Object.entries(results).map(([svc, res]) => {
+      const cls = res.ok === true ? 'ok' : res.ok === false ? 'fail' : 'skip';
+      const icon = res.ok === true ? '✅' : res.ok === false ? '❌' : '⏭️';
+      return `<div class="test-result ${cls}"><b>${icon} ${TEST_LABELS[svc] || svc}</b> ${esc(res.detail)}</div>`;
+    }).join('');
+  } catch (e) {
+    $('test-results').innerHTML = '<div class="test-result fail">❌ erro ao executar os testes</div>';
+  }
+  $('btn-test').disabled = false;
+};
+
 refresh();
+refreshLogs();
+loadKeysStatus();
 setInterval(refresh, 60_000);
+setInterval(refreshLogs, 10_000);
 </script>
 </body>
 </html>

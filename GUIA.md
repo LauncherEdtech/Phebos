@@ -1,7 +1,7 @@
 # 📖 Guia completo do Phebos
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-06-10 — instalador automático `setup.sh` (1 comando instala Docker, configura chaves e sobe tudo).
+> Última atualização: 2026-06-10 — abas "Logs ao vivo" e "Conexões" no dashboard (definir/testar chaves de API pelo navegador, com recarga automática pelo agente).
 
 ## O que é
 
@@ -142,6 +142,15 @@ Abra **http://localhost:8000**. Ele mostra:
 - **Lições aprendidas**: a auto-reflexão mais recente do agente.
 - **Aba "Histórico do bot"**: linha do tempo completa — 🔎 leituras de mercado,
   🧠 pensamentos, 💱 operações, 🏁 resultados e 📚 reflexões, com filtros.
+- **Aba "Logs ao vivo"**: terminal com os logs do agente (filtros por
+  Info/Avisos/Erros), atualizado a cada 10s — sem precisar de SSH.
+- **Aba "Conexões"**: defina as chaves de API pelo navegador e clique em
+  "Testar conexões" — 1 chamada barata por serviço confirma se cada chave
+  funciona (o teste do Telegram envia uma mensagem real). As chaves vão para
+  `secrets.env` (permissão 600, prioridade sobre o `.env`) e o **agente
+  recarrega sozinho no próximo ciclo**, sem reiniciar container. A tela nunca
+  mostra a chave completa (só prévia mascarada) e chaves de dinheiro REAL não
+  podem ser definidas por ali — apenas via `.env`, por segurança.
 
 Visual em branco/preto/dourado. Atualiza sozinho a cada 60 segundos.
 A porta muda com `PHEBOS_DASHBOARD_PORT`.
