@@ -1,7 +1,7 @@
 # 📖 Guia completo do Phebos
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-06-10 — inicialização autocurável: se faltar chave, o agente loga o erro na aba Logs e tenta de novo a cada 30s (salvar a chave na aba Conexões resolve sem reiniciar).
+> Última atualização: 2026-06-10 — correção: localização do config.yaml no Docker (o pacote instalado em site-packages não achava o arquivo); busca agora cobre PHEBOS_CONFIG, cwd e raiz do repo.
 
 ## O que é
 
@@ -292,6 +292,7 @@ python -m pytest tests/ -q
 | `Modo LIVE bloqueado` | Falta `PHEBOS_CONFIRM_LIVE=EU_ACEITO_O_RISCO` no ambiente. |
 | `feed RSS indisponível (...)` | Feed fora do ar ou rede bloqueada — o ciclo continua sem ele. |
 | Dashboard vazio | O agente ainda não rodou nenhum ciclo (`once`/`run`), ou os serviços não compartilham o mesmo volume/banco. |
+| `No such file or directory: '.../config.yaml'` | O pacote instalado não achava o config. Corrigido nesta versão (busca em PHEBOS_CONFIG/cwd/repo). Atualize: `git pull && docker compose up -d --build`. |
 | Nenhum log e nenhuma request de API | Chave do Gemini ausente/errada na inicialização. Desde esta versão o agente não morre mais: ele loga o erro na aba **Logs** e tenta de novo a cada 30s — salve a chave correta na aba **Conexões** que ele se recupera sozinho. Em versões antigas, atualize: `git pull && docker compose up -d --build`. |
 | Erro 401/403 da Binance/Alpaca | Chave errada para o modo: testnet ≠ live; paper ≠ live. |
 | Telegram mudo | Token/chat_id errados, ou você não mandou a 1ª mensagem para o bot. |

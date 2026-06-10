@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
 from .config import (
-    DB_PATH, ROOT, get_runtime_interval, request_run_now, set_runtime_interval,
+    DB_PATH, find_config, get_runtime_interval, request_run_now, set_runtime_interval,
 )
 from .evaluation import evaluate_demo
 from .journal import Journal
@@ -31,7 +31,7 @@ def _conn() -> sqlite3.Connection:
 
 def _raw_config() -> dict:
     try:
-        return yaml.safe_load((ROOT / "config.yaml").read_text()) or {}
+        return yaml.safe_load(find_config().read_text()) or {}
     except Exception:
         return {}
 

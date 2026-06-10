@@ -105,10 +105,37 @@ class Settings:
         return key, secret
 
 
+def _candidates(filename: str) -> list[Path]:
+    """Lugares onde procurar config.yaml/.env, em ordem de prioridade.
+
+    Cobre tanto o modo dev (rodando da raiz do repo, ROOT correto) quanto o
+    Docker, onde o pacote é instalado em site-packages (ROOT vira inútil) mas
+    o WORKDIR é /app e o config.yaml está em /app/config.yaml (= cwd)."""
+    cands: list[Path] = []
+    if filename == "config.yaml" and os.environ.get("PHEBOS_CONFIG"):
+        cands.append(Path(os.environ["PHEBOS_CONFIG"]))
+    cands.append(Path.cwd() / filename)   # Docker: /app/<filename>
+    cands.append(ROOT / filename)         # dev: raiz do repositório
+    cands.append(DATA_DIR / filename)     # volume de dados
+    return cands
+
+
+def find_config() -> Path:
+    """Caminho do config.yaml — primeiro candidato existente, ou cwd p/ erro claro."""
+    for candidate in _candidates("config.yaml"):
+        if candidate.exists():
+            return candidate
+    return Path.cwd() / "config.yaml"
+
+
 def load_settings(path: Path | None = None) -> Settings:
-    load_dotenv(ROOT / ".env")
+    for env_file in _candidates(".env"):  # load_dotenv não erra se não existir
+        if env_file.exists():
+            load_dotenv(env_file)
+            break
     load_dotenv(SECRETS_FILE, override=True)  # chaves do dashboard prevalecem
-    raw = yaml.safe_load((path or ROOT / "config.yaml").read_text())
+    config_path = path or find_config()
+    raw = yaml.safe_load(config_path.read_text())
 
     mode = raw.get("mode", "demo")
     if mode not in ("demo", "live"):

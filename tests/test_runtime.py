@@ -58,3 +58,22 @@ def test_run_now_idempotente_no_request(cfg):
     cfg.request_run_now()  # segundo pedido não acumula
     assert cfg.consume_run_now() is True
     assert cfg.consume_run_now() is False
+
+
+# ── resolução do config.yaml (bug do Docker: pacote em site-packages) ──
+def test_find_config_prioriza_env(cfg, tmp_path, monkeypatch):
+    custom = tmp_path / "meu_config.yaml"
+    custom.write_text("mode: demo")
+    monkeypatch.setenv("PHEBOS_CONFIG", str(custom))
+    import importlib
+    importlib.reload(cfg)
+    assert cfg.find_config() == custom
+
+
+def test_find_config_acha_no_cwd(cfg, tmp_path, monkeypatch):
+    monkeypatch.delenv("PHEBOS_CONFIG", raising=False)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.yaml").write_text("mode: demo")
+    import importlib
+    importlib.reload(cfg)
+    assert cfg.find_config() == tmp_path / "config.yaml"
