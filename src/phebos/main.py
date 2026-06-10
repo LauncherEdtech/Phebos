@@ -208,6 +208,35 @@ def run_cycle(settings: Settings, brokers, analyst: Analyst, risk: RiskEngine,
             notifier.error(market, str(exc))
 
 
+def key_summary() -> str:
+    """Resumo (sem expor valores) de quais chaves estão em vigor."""
+    from .keys import effective_value
+    parts = []
+    for label, field in [("Gemini", "GEMINI_API_KEY"),
+                         ("Binance-testnet", "BINANCE_TESTNET_API_KEY"),
+                         ("Alpaca-paper", "ALPACA_PAPER_API_KEY"),
+                         ("Telegram", "TELEGRAM_BOT_TOKEN")]:
+        parts.append(f"{label} {'✔' if effective_value(field) else '✖'}")
+    return " | ".join(parts)
+
+
+def init_runtime():
+    """Carrega config + chaves e constrói brokers/analista/notifier.
+
+    Levanta exceção se faltar chave de mercado habilitado ou do Gemini —
+    o chamador decide se aborta (once) ou tenta de novo (run).
+    """
+    settings = load_settings()
+    brokers = build_brokers(settings)
+    analyst = Analyst(
+        settings.analyst_model,
+        settings.analyst_extra_instructions,
+        web_search=settings.analyst_web_search,
+    )
+    notifier = Notifier(settings.telegram_enabled)
+    return settings, brokers, analyst, notifier
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
@@ -218,25 +247,43 @@ def main() -> None:
         serve(port=int(os.environ.get("PHEBOS_DASHBOARD_PORT", "8000")))
         return
 
-    settings = load_settings()
     journal = Journal()
 
     if command == "evaluate":
+        settings = load_settings()
         print_report(evaluate_demo(journal, settings.demo))
         return
 
-    # logs do agente também vão para o banco (aba "Logs" do dashboard)
+    if command not in ("run", "once"):
+        print(f"Comando desconhecido: {command} (use run | once | evaluate | dashboard)")
+        sys.exit(1)
+
+    # logs do agente também vão para o banco (aba "Logs" do dashboard) —
+    # ANTES de qualquer coisa que possa falhar, para o erro ficar visível lá
     logging.getLogger().addHandler(JournalLogHandler(journal))
     journal.prune_logs()
 
-    brokers = build_brokers(settings)
-    analyst = Analyst(
-        settings.analyst_model,
-        settings.analyst_extra_instructions,
-        web_search=settings.analyst_web_search,
-    )
+    # ── inicialização autocurável ────────────────────────────────────
+    # Se faltar uma chave (Gemini/corretora), NÃO morre em loop de restart:
+    # loga o erro (visível na aba Logs), espera e tenta de novo. Salvar as
+    # chaves na aba Conexões resolve sem reiniciar nada.
+    while True:
+        log.info("chaves em vigor: %s", key_summary())
+        try:
+            settings, brokers, analyst, notifier = init_runtime()
+            break
+        except Exception as exc:
+            log.error(
+                "inicialização falhou: %s — salve/corrija as chaves na aba "
+                "Conexões do dashboard; nova tentativa em 30s", exc)
+            if command == "once":
+                raise
+            for _ in range(15):  # 30s, mas acorda se clicarem 'Rodar agora'
+                if consume_run_now():
+                    break
+                time.sleep(2)
+
     risk = RiskEngine(settings.risk)
-    notifier = Notifier(settings.telegram_enabled)
 
     banner = "DINHEIRO REAL" if settings.is_live else "DEMO (dinheiro fictício)"
     market_names = [b.market for b, _ in brokers]
@@ -247,9 +294,6 @@ def main() -> None:
     if command == "once":
         run_cycle(settings, brokers, analyst, risk, journal, notifier)
         return
-    if command != "run":
-        print(f"Comando desconhecido: {command} (use run | once | evaluate | dashboard)")
-        sys.exit(1)
 
     def secrets_mtime() -> float:
         try:
@@ -284,14 +328,11 @@ def main() -> None:
         # chaves salvas pela aba Conexões do dashboard → recarrega sem reiniciar
         if secrets_mtime() != last_secrets:
             last_secrets = secrets_mtime()
-            log.info("chaves atualizadas pelo dashboard — recarregando conexões")
+            log.info("chaves atualizadas pelo dashboard — recarregando conexões (%s)",
+                     key_summary())
             try:
-                settings = load_settings()
-                brokers = build_brokers(settings)
-                analyst = Analyst(settings.analyst_model,
-                                  settings.analyst_extra_instructions,
-                                  web_search=settings.analyst_web_search)
-                notifier = Notifier(settings.telegram_enabled)
+                settings, brokers, analyst, notifier = init_runtime()
+                risk = RiskEngine(settings.risk)
                 log.info("conexões recarregadas com sucesso")
             except Exception:
                 log.exception("falha ao recarregar chaves — mantendo configuração anterior")

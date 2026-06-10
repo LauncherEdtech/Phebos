@@ -1,7 +1,7 @@
 # 📖 Guia completo do Phebos
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-06-10 — controle do ciclo pelo dashboard: botão "Rodar ciclo agora" e campo de cadência (intervalo) ajustável sem reiniciar.
+> Última atualização: 2026-06-10 — inicialização autocurável: se faltar chave, o agente loga o erro na aba Logs e tenta de novo a cada 30s (salvar a chave na aba Conexões resolve sem reiniciar).
 
 ## O que é
 
@@ -292,6 +292,7 @@ python -m pytest tests/ -q
 | `Modo LIVE bloqueado` | Falta `PHEBOS_CONFIRM_LIVE=EU_ACEITO_O_RISCO` no ambiente. |
 | `feed RSS indisponível (...)` | Feed fora do ar ou rede bloqueada — o ciclo continua sem ele. |
 | Dashboard vazio | O agente ainda não rodou nenhum ciclo (`once`/`run`), ou os serviços não compartilham o mesmo volume/banco. |
+| Nenhum log e nenhuma request de API | Chave do Gemini ausente/errada na inicialização. Desde esta versão o agente não morre mais: ele loga o erro na aba **Logs** e tenta de novo a cada 30s — salve a chave correta na aba **Conexões** que ele se recupera sozinho. Em versões antigas, atualize: `git pull && docker compose up -d --build`. |
 | Erro 401/403 da Binance/Alpaca | Chave errada para o modo: testnet ≠ live; paper ≠ live. |
 | Telegram mudo | Token/chat_id errados, ou você não mandou a 1ª mensagem para o bot. |
 | Mercado de ações "fechado" | Normal: NYSE opera ~9h30–16h de NY em dias úteis. Cripto segue 24/7. |

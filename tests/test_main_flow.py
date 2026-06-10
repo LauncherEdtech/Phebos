@@ -194,3 +194,28 @@ def test_log_handler_tolera_journal_quebrado():
     handler = pm.JournalLogHandler(BrokenJournal())
     record = logmod.LogRecord("x", logmod.INFO, "f", 1, "msg", None, None)
     handler.emit(record)  # não pode levantar exceção
+
+
+def test_init_falha_com_erro_claro_sem_chaves(monkeypatch):
+    """Sem chaves do mercado habilitado, a inicialização levanta erro claro —
+    que o loop autocurável do main() loga na aba Logs e tenta de novo."""
+    import pytest
+    for f in ("BINANCE_TESTNET_API_KEY", "BINANCE_TESTNET_API_SECRET"):
+        monkeypatch.delenv(f, raising=False)
+    with pytest.raises(RuntimeError, match="BINANCE_TESTNET"):
+        pm.build_brokers(make_settings())
+
+
+def test_key_summary_mostra_presenca_sem_expor_valores(monkeypatch, tmp_path):
+    import importlib
+    monkeypatch.setenv("PHEBOS_DATA_DIR", str(tmp_path))
+    import phebos.config, phebos.keys
+    importlib.reload(phebos.config)
+    importlib.reload(phebos.keys)
+    for f in phebos.keys.KEY_FIELDS:
+        monkeypatch.delenv(f, raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY", "chave-super-secreta")
+    s = pm.key_summary()
+    assert "Gemini ✔" in s
+    assert "Binance-testnet ✖" in s
+    assert "chave-super-secreta" not in s
