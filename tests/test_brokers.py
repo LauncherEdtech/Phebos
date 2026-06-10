@@ -6,6 +6,9 @@ from phebos.schemas import OrderDecision
 
 
 class FakeResp:
+    status_code = 200
+    text = ""
+
     def __init__(self, payload):
         self._payload = payload
 
@@ -136,3 +139,66 @@ def test_alpaca_execute_notional():
 def test_alpaca_paper_vs_live_url():
     assert "paper" in AlpacaBroker("k", "s", live=False).base_url
     assert "paper" not in AlpacaBroker("k", "s", live=True).base_url
+
+
+# ── corpo do erro nas exceções (diagnóstico) ────────────────────────
+class FakeErrorResp:
+    status_code = 400
+    text = '{"code":-2010,"msg":"Account has insufficient balance for requested action."}'
+
+    def json(self):
+        import json
+        return json.loads(self.text)
+
+
+def test_binance_erro_inclui_corpo_da_resposta():
+    import pytest, requests
+    with pytest.raises(requests.HTTPError, match="insufficient balance"):
+        BinanceBroker._check(FakeErrorResp())
+
+
+def test_alpaca_erro_inclui_corpo_da_resposta():
+    import pytest, requests
+
+    class Resp:
+        status_code = 403
+        text = '{"message": "insufficient buying power"}'
+
+    with pytest.raises(requests.HTTPError, match="buying power"):
+        AlpacaBroker._check(Resp())
+
+
+def test_binance_signed_usa_recv_window_e_offset():
+    b = BinanceBroker("k", "s", live=False)
+    fake = FakeBinanceSession()
+    b.session = fake
+    b._time_offset = 0  # evita a chamada de /time no teste
+    b._signed("GET", "/api/v3/account")
+    method, url, params = fake.requests[-1]
+    assert params["recvWindow"] == 10000 and "timestamp" in params
+
+
+def test_binance_retry_em_timestamp_invalido():
+    """Erro -1021 (relógio fora) → recalcula o offset e tenta 1 vez de novo."""
+    b = BinanceBroker("k", "s", live=False)
+    calls = {"n": 0}
+
+    class RetrySession:
+        headers = {}
+
+        def get(self, url, params=None, timeout=None):
+            return FakeResp({"serverTime": int(__import__("time").time() * 1000)})
+
+        def request(self, method, url, params=None, timeout=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                class Bad:
+                    status_code = 400
+                    text = '{"code":-1021,"msg":"Timestamp outside recvWindow"}'
+                return Bad()
+            return FakeResp({"balances": []})
+
+    b.session = RetrySession()
+    b._time_offset = 99999  # offset errado de propósito
+    result = b._signed("GET", "/api/v3/account")
+    assert result == {"balances": []} and calls["n"] == 2

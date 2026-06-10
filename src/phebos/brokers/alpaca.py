@@ -24,9 +24,16 @@ class AlpacaBroker(Broker):
             "APCA-API-SECRET-KEY": api_secret,
         })
 
+    @staticmethod
+    def _check(r) -> None:
+        """Erros da Alpaca vêm explicados no corpo (message) — inclui na exceção."""
+        if r.status_code >= 400:
+            raise requests.HTTPError(
+                f"Alpaca HTTP {r.status_code}: {r.text[:300]}", response=r)
+
     def _get(self, base: str, path: str, params: dict | None = None) -> dict:
         r = self.session.get(f"{base}{path}", params=params, timeout=15)
-        r.raise_for_status()
+        self._check(r)
         return r.json()
 
     # ── Broker ──────────────────────────────────────────────────────
@@ -97,5 +104,5 @@ class AlpacaBroker(Broker):
             "time_in_force": "day",
             "notional": round(order.notional_usd, 2),
         }, timeout=15)
-        r.raise_for_status()
+        self._check(r)
         return ExecutedOrder(order.symbol, order.side, order.notional_usd, r.json()["id"])

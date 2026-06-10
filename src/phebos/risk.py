@@ -124,6 +124,9 @@ class RiskEngine:
         acted_events = acted_events or set()
         atr_by_symbol = atr_by_symbol or {}
         c = self.config
+        # caixa DECRESCENTE: cada compra aprovada consome o saldo disponível
+        # para as seguintes (com margem de 1% p/ taxas/slippage da corretora)
+        remaining_cash = snapshot.cash_usd * 0.99
 
         for order in orders:
             if kill_switch_active():
@@ -172,9 +175,17 @@ class RiskEngine:
                 if order.symbol not in open_symbols and len(open_symbols) >= c.max_open_positions:
                     verdicts.append(RiskVerdict(order, False, f"já há {len(open_symbols)} posições abertas (máx. {c.max_open_positions})"))
                     continue
-                if order.notional_usd > snapshot.cash_usd:
-                    verdicts.append(RiskVerdict(order, False, f"caixa insuficiente (${snapshot.cash_usd:.2f})"))
-                    continue
+                if order.notional_usd > remaining_cash:
+                    # tenta caber no caixa que sobrou (após compras anteriores do ciclo)
+                    if remaining_cash >= c.min_order_notional_usd:
+                        sized_note = (f"redimensionada de ${order.notional_usd:.2f} para "
+                                      f"${remaining_cash:.2f} (caixa restante no ciclo)")
+                        order.notional_usd = round(remaining_cash, 2)
+                    else:
+                        verdicts.append(RiskVerdict(
+                            order, False,
+                            f"caixa insuficiente (restam ${remaining_cash:.2f} neste ciclo)"))
+                        continue
             if order.side == "sell" and order.symbol not in open_symbols:
                 verdicts.append(RiskVerdict(order, False, "venda de ativo sem posição aberta"))
                 continue
@@ -182,4 +193,5 @@ class RiskEngine:
             verdicts.append(RiskVerdict(order, True, sized_note))
             if order.side == "buy":
                 open_symbols.add(order.symbol)
+                remaining_cash -= order.notional_usd
         return verdicts

@@ -209,3 +209,34 @@ def test_anti_tilt_no_review_redimensiona():
 def review_with_streak(eng, orders, streak):
     return eng.review(orders, make_snapshot(), ["BTCUSDT"], 0.0, None,
                       {"BTCUSDT": 4.0}, "alta", streak)
+
+
+# ── caixa decrescente no mesmo ciclo (bug do 400 da Binance) ────────
+def test_caixa_decresce_entre_compras_do_mesmo_ciclo():
+    """Duas compras de $9500 com $10000 em caixa: a 2ª deve ser
+    redimensionada/vetada, nunca chegar inteira na corretora."""
+    snap = make_snapshot(equity=190000, cash=10000)
+    orders = [order(symbol="BTCUSDT", notional=9500),
+              order(symbol="ETHUSDT", notional=9500)]
+    verdicts = review(engine(), orders, snap=snap, atr={"BTCUSDT": 4.0, "ETHUSDT": 4.0})
+    assert verdicts[0].approved and verdicts[0].order.notional_usd == 9500
+    # a 2ª cabe só no que sobrou (10000×0.99 − 9500 = 400)
+    assert verdicts[1].approved
+    assert verdicts[1].order.notional_usd <= 400.0
+    assert "caixa restante" in verdicts[1].reason
+
+
+def test_caixa_esgotado_veta_compra_seguinte():
+    snap = make_snapshot(equity=190000, cash=9600)
+    orders = [order(symbol="BTCUSDT", notional=9500),
+              order(symbol="ETHUSDT", notional=9500)]
+    verdicts = review(engine(), orders, snap=snap, atr={"BTCUSDT": 4.0, "ETHUSDT": 4.0})
+    assert verdicts[0].approved
+    assert not verdicts[1].approved and "caixa insuficiente" in verdicts[1].reason
+
+
+def test_margem_de_taxas_no_caixa():
+    # caixa de $100: com margem de 1%, só $99 são gastáveis
+    snap = make_snapshot(equity=2000, cash=100.0)
+    v = review(engine(), [order(notional=100)], snap=snap, atr={"BTCUSDT": 4.0})[0]
+    assert v.approved and v.order.notional_usd <= 99.0

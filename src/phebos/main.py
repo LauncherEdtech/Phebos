@@ -179,7 +179,19 @@ def run_cycle(settings: Settings, brokers, analyst: Analyst, risk: RiskEngine,
                 if kill_switch_active():
                     log.warning("[%s] kill switch ativo — ordem não enviada", market)
                     continue
-                executed = broker.execute(o)
+                try:
+                    executed = broker.execute(o)
+                except Exception as exc:
+                    # rejeição da corretora não pode derrubar as demais ordens
+                    log.error("[%s] ordem REJEITADA pela corretora: %s %s $%.2f — %s",
+                              market, o.side, o.symbol, o.notional_usd, str(exc)[:300])
+                    journal.log_trade(settings.mode, market, o.symbol, o.side,
+                                      o.notional_usd, False,
+                                      f"rejeitada pela corretora: {str(exc)[:200]}",
+                                      o.rationale)
+                    notifier.vetoed(market, o.side, o.symbol, o.notional_usd,
+                                    f"rejeitada pela corretora: {str(exc)[:150]}")
+                    continue
                 log.info("[%s] EXECUTADA %s %s $%.2f (id=%s) — %s",
                          market, o.side, o.symbol, o.notional_usd,
                          executed.broker_order_id, o.rationale)

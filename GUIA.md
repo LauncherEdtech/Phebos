@@ -1,7 +1,7 @@
 # 📖 Guia completo do Phebos
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-06-10 — correção: localização do config.yaml no Docker (o pacote instalado em site-packages não achava o arquivo); busca agora cobre PHEBOS_CONFIG, cwd e raiz do repo.
+> Última atualização: 2026-06-10 — correções de execução: caixa decrescente entre ordens do mesmo ciclo, motivo exato dos erros da Binance/Alpaca nos logs, tolerância a relógio dessincronizado (recvWindow + offset com retry) e rejeição de uma ordem não aborta as demais.
 
 ## O que é
 

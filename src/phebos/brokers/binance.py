@@ -30,18 +30,45 @@ class BinanceBroker(Broker):
         self.session.headers["X-MBX-APIKEY"] = api_key
 
     # ── HTTP ────────────────────────────────────────────────────────
+    @staticmethod
+    def _check(r) -> None:
+        """Erros da Binance vêm explicados no corpo (code/msg) — inclui na exceção."""
+        if r.status_code >= 400:
+            raise requests.HTTPError(
+                f"Binance HTTP {r.status_code}: {r.text[:300]}", response=r)
+
     def _public(self, path: str, params: dict | None = None) -> dict | list:
         r = self.session.get(f"{self.base_url}{path}", params=params, timeout=15)
-        r.raise_for_status()
+        self._check(r)
         return r.json()
+
+    def _server_time_offset_ms(self) -> int:
+        """Diferença relógio-da-Binance − relógio-local (p/ VM com clock torto)."""
+        try:
+            server = self._public("/api/v3/time")["serverTime"]
+            return int(server) - int(time.time() * 1000)
+        except Exception:
+            return 0
 
     def _signed(self, method: str, path: str, params: dict | None = None) -> dict:
         params = dict(params or {})
-        params["timestamp"] = int(time.time() * 1000)
+        if not hasattr(self, "_time_offset"):
+            self._time_offset = self._server_time_offset_ms()
+        params["timestamp"] = int(time.time() * 1000) + self._time_offset
+        params["recvWindow"] = 10000  # tolera pequenas derivas de relógio
         query = urlencode(params)
         params["signature"] = hmac.new(self.api_secret, query.encode(), hashlib.sha256).hexdigest()
         r = self.session.request(method, f"{self.base_url}{path}", params=params, timeout=15)
-        r.raise_for_status()
+        if r.status_code >= 400 and '"code":-1021' in (r.text or ""):
+            # relógio derivou desde o cálculo do offset → recalcula e tenta 1x
+            self._time_offset = self._server_time_offset_ms()
+            params.pop("signature")
+            params["timestamp"] = int(time.time() * 1000) + self._time_offset
+            query = urlencode(params)
+            params["signature"] = hmac.new(self.api_secret, query.encode(),
+                                           hashlib.sha256).hexdigest()
+            r = self.session.request(method, f"{self.base_url}{path}", params=params, timeout=15)
+        self._check(r)
         return r.json()
 
     # ── Broker ──────────────────────────────────────────────────────
