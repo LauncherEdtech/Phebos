@@ -43,9 +43,15 @@ news:
       - https://feeds.content.dowjones.io/public/rss/mw_topstories
 
 analyst:
-  model: claude-opus-4-8
-  # Pesquisa ativa na web antes de cada decisão (custo: ~US$0,01 por busca)
+  # Modelos Gemini: gemini-2.5-flash (rápido e barato, recomendado)
+  # ou gemini-2.5-pro (mais capaz, mais caro)
+  model: gemini-2.5-flash
+  # Pesquisa ativa com a Busca Google antes de cada decisão
   web_search: true
-  max_web_searches_per_cycle: 6
   # Instrução extra opcional anexada ao prompt do analista (estilo, viés, etc.)
   extra_instructions: ""
+
+notifications:
+  # Avisos no Telegram (trades executados, ordens vetadas, erros).
+  # Requer TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID no .env
+  telegram: true

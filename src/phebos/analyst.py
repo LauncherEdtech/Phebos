@@ -1,16 +1,20 @@
-"""Analista em duas etapas via API do Claude.
+"""Analista em duas etapas via API do Gemini (Google).
 
-1. research() — Claude com a ferramenta de web search investiga as notícias
+1. research() — Gemini com grounding na Busca Google investiga as notícias
    das últimas horas sobre os ativos (anúncios, IPOs, eventos macro, reação
    das redes sociais) e produz um briefing de inteligência de mercado.
-2. decide() — Claude recebe snapshot + indicadores técnicos + briefing e
-   retorna uma decisão estruturada e validada (Pydantic).
+2. decide() — Gemini recebe snapshot + indicadores técnicos + briefing e
+   retorna uma decisão estruturada validada pelo schema Pydantic.
+
+(As duas etapas são separadas porque a API não permite combinar busca do
+Google com saída JSON estruturada na mesma chamada.)
 """
 
 import json
 import logging
 
-import anthropic
+from google import genai
+from google.genai import types
 
 from .schemas import MarketSnapshot, TradingDecision
 
@@ -22,7 +26,7 @@ Sua missão é descobrir, ANTES que o mercado precifique por completo, eventos
 que podem mover os ativos monitorados — como faria um analista humano
 especializado lendo notícias o dia inteiro.
 
-Use a busca na web para investigar as últimas 24-48 horas:
+Use a busca do Google para investigar as últimas 24-48 horas:
 - Anúncios de governos e bancos centrais (ex.: reservas estratégicas, juros,
   regulação de cripto, tarifas comerciais).
 - Notícias corporativas: resultados, IPOs, lançamentos de produto, fusões,
@@ -63,15 +67,14 @@ pesquisador. Decida como um gestor humano experiente:
 
 
 class Analyst:
-    def __init__(self, model: str, extra_instructions: str = "",
-                 web_search: bool = True, max_web_searches: int = 6):
-        self.client = anthropic.Anthropic()
+    def __init__(self, model: str, extra_instructions: str = "", web_search: bool = True):
+        # Lê GEMINI_API_KEY (ou GOOGLE_API_KEY) do ambiente
+        self.client = genai.Client()
         self.model = model
         self.extra_instructions = extra_instructions
         self.web_search = web_search
-        self.max_web_searches = max_web_searches
 
-    # ── Etapa 1: pesquisa de notícias com web search ────────────────
+    # ── Etapa 1: pesquisa de notícias com busca do Google ───────────
     def research(self, snapshot: MarketSnapshot, headlines_text: str) -> str:
         symbols = ", ".join(s.symbol for s in snapshot.symbols)
         user_prompt = (
@@ -80,29 +83,17 @@ class Analyst:
             "Produza o briefing de inteligência para este ciclo."
         )
         if not self.web_search:
-            return f"(web search desativado — apenas manchetes RSS)\n{headlines_text}"
+            return f"(busca na web desativada — apenas manchetes RSS)\n{headlines_text}"
 
-        messages = [{"role": "user", "content": user_prompt}]
-        tools = [{
-            "type": "web_search_20260209",
-            "name": "web_search",
-            "max_uses": self.max_web_searches,
-        }]
-        for _ in range(5):  # proteção contra pause_turn em loop
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=16000,
-                thinking={"type": "adaptive"},
-                system=RESEARCH_SYSTEM,
-                tools=tools,
-                messages=messages,
-            )
-            if response.stop_reason == "pause_turn":
-                messages = messages + [{"role": "assistant", "content": response.content}]
-                continue
-            break
-        briefing = "\n".join(b.text for b in response.content if b.type == "text")
-        return briefing or "(pesquisa não retornou conteúdo neste ciclo)"
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=RESEARCH_SYSTEM,
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+            ),
+        )
+        return (response.text or "").strip() or "(pesquisa não retornou conteúdo neste ciclo)"
 
     # ── Etapa 2: decisão estruturada ────────────────────────────────
     def decide(self, snapshot: MarketSnapshot, indicators: dict,
@@ -117,16 +108,18 @@ class Analyst:
         if self.extra_instructions:
             user_prompt += f"\n\nInstruções adicionais do operador:\n{self.extra_instructions}"
 
-        response = self.client.messages.parse(
+        response = self.client.models.generate_content(
             model=self.model,
-            max_tokens=16000,
-            thinking={"type": "adaptive"},
-            system=DECISION_SYSTEM,
-            messages=[{"role": "user", "content": user_prompt}],
-            output_format=TradingDecision,
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=DECISION_SYSTEM,
+                response_mime_type="application/json",
+                response_schema=TradingDecision,
+            ),
         )
-        decision = response.parsed_output
-        if decision is None:
-            # Resposta fora do schema (ex.: refusal) — trata como "não operar"
+        decision = response.parsed
+        if not isinstance(decision, TradingDecision):
+            # Resposta fora do schema (ex.: bloqueio de segurança) → não operar
+            log.warning("decisão fora do schema — tratando como 'não operar'")
             return TradingDecision(market_view="Análise indisponível neste ciclo.", orders=[])
         return decision

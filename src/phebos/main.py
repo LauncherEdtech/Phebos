@@ -19,6 +19,7 @@ from .evaluation import evaluate_demo, print_report
 from .indicators import compute_indicators
 from .journal import Journal
 from .news import fetch_headlines, format_headlines
+from .notify import Notifier
 from .risk import RiskEngine
 
 log = logging.getLogger("phebos")
@@ -37,7 +38,8 @@ def build_brokers(settings: Settings) -> list[tuple[Broker, list[str]]]:
     return brokers
 
 
-def run_cycle(settings: Settings, brokers, analyst: Analyst, risk: RiskEngine, journal: Journal) -> None:
+def run_cycle(settings: Settings, brokers, analyst: Analyst, risk: RiskEngine,
+              journal: Journal, notifier: Notifier) -> None:
     for broker, symbols in brokers:
         market = broker.market
         try:
@@ -82,6 +84,7 @@ def run_cycle(settings: Settings, brokers, analyst: Analyst, risk: RiskEngine, j
                                 market, o.side, o.symbol, o.notional_usd, v.reason)
                     journal.log_trade(settings.mode, market, o.symbol, o.side,
                                       o.notional_usd, False, v.reason, o.rationale)
+                    notifier.vetoed(market, o.side, o.symbol, o.notional_usd, v.reason)
                     continue
                 if kill_switch_active():
                     log.warning("[%s] kill switch ativo — ordem não enviada", market)
@@ -92,8 +95,11 @@ def run_cycle(settings: Settings, brokers, analyst: Analyst, risk: RiskEngine, j
                          executed.broker_order_id, o.rationale)
                 journal.log_trade(settings.mode, market, o.symbol, o.side, o.notional_usd,
                                   True, "ok", o.rationale, executed.broker_order_id)
-        except Exception:
+                notifier.trade(settings.mode, market, o.side, o.symbol,
+                               o.notional_usd, o.rationale, executed.broker_order_id)
+        except Exception as exc:
             log.exception("[%s] erro no ciclo — seguindo para o próximo mercado", market)
+            notifier.error(market, str(exc))
 
 
 def main() -> None:
@@ -112,24 +118,25 @@ def main() -> None:
         settings.analyst_model,
         settings.analyst_extra_instructions,
         web_search=settings.analyst_web_search,
-        max_web_searches=settings.analyst_max_web_searches,
     )
     risk = RiskEngine(settings.risk)
+    notifier = Notifier(settings.telegram_enabled)
 
     banner = "DINHEIRO REAL" if settings.is_live else "DEMO (dinheiro fictício)"
+    market_names = [b.market for b, _ in brokers]
     log.info("Phebos iniciado — modo %s | intervalo %d min | mercados: %s",
-             banner, settings.interval_minutes,
-             ", ".join(b.market for b, _ in brokers))
+             banner, settings.interval_minutes, ", ".join(market_names))
+    notifier.startup(settings.mode, market_names, settings.interval_minutes)
 
     if command == "once":
-        run_cycle(settings, brokers, analyst, risk, journal)
+        run_cycle(settings, brokers, analyst, risk, journal, notifier)
         return
     if command != "run":
         print(f"Comando desconhecido: {command} (use run | once | evaluate)")
         sys.exit(1)
 
     while True:
-        run_cycle(settings, brokers, analyst, risk, journal)
+        run_cycle(settings, brokers, analyst, risk, journal, notifier)
         time.sleep(settings.interval_minutes * 60)
 
 

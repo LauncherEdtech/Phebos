@@ -1,6 +1,6 @@
 # Phebos — Agente Autônomo de Trading com IA
 
-Sistema autônomo que usa a **API do Claude** (Anthropic) para analisar o mercado
+Sistema autônomo que usa a **API do Gemini** (Google) para analisar o mercado
 e tomar decisões de compra/venda em dois mercados:
 
 - **Cripto** via Binance (24/7) — com suporte à **testnet** (dinheiro fictício)
@@ -25,15 +25,16 @@ Use por sua conta e risco. Nada aqui é recomendação de investimento.
 Loop (a cada N minutos)
   → coleta dados de mercado (candles, preços, posições, saldo)
   → coleta manchetes de notícias via RSS (CoinDesk, Yahoo Finance, CNBC, ...)
-  → PESQUISA: Claude com web search investiga as notícias das últimas horas
+  → PESQUISA: Gemini com Busca Google investiga as notícias das últimas horas
     (anúncios de governos, IPOs, descobertas, reação das redes sociais)
     e produz um briefing de inteligência de mercado
   → calcula indicadores técnicos (RSI, médias móveis, tendência de volume)
-  → DECISÃO: Claude recebe snapshot + indicadores + briefing e retorna uma
+  → DECISÃO: Gemini recebe snapshot + indicadores + briefing e retorna uma
     decisão estruturada (JSON validado: ordens + justificativa), priorizando
     notícias fortes ainda não precificadas — como um gestor humano faria
   → motor de risco valida cada ordem (limites rígidos em código)
   → executa as ordens aprovadas via API da corretora/exchange
+  → notifica cada trade no Telegram 📱
   → registra tudo no journal (SQLite): briefings, decisões, trades, patrimônio
 ```
 
@@ -44,7 +45,8 @@ src/phebos/
 ├── schemas.py       # modelos Pydantic (decisão da IA, ordens, snapshot)
 ├── news.py          # manchetes via RSS/Atom (parser próprio, sem deps extras)
 ├── indicators.py    # RSI, SMA, preço vs. média, tendência de volume
-├── analyst.py       # 2 etapas: pesquisa (web search) → decisão estruturada
+├── analyst.py       # 2 etapas: pesquisa (Busca Google) → decisão estruturada
+├── notify.py        # notificações no Telegram (trades, vetos, erros)
 ├── risk.py          # motor de risco determinístico + kill switch
 ├── journal.py       # registro em SQLite (briefings, trades, patrimônio)
 ├── evaluation.py    # avalia o período demo e diz se está apto ao modo real
@@ -64,8 +66,8 @@ O agente reage a eventos do mundo real dentro do intervalo do ciclo
 - Empresa lança produto mal recebido pelo mercado/redes sociais → tese de venda.
 - Descoberta relevante (ex.: nova bacia de petróleo) → tese de compra na ação.
 
-> Custo/latência: a pesquisa usa a ferramenta de web search da API da Anthropic
-> (~US$0,01 por busca, limite configurável em `max_web_searches_per_cycle`).
+> Custo/latência: o modelo padrão é o `gemini-2.5-flash` (muito barato) e a
+> pesquisa usa o grounding com a Busca Google da própria API do Gemini.
 > O sistema reage em minutos — rápido como um analista humano atento, mas não
 > compete com robôs de alta frequência que reagem em milissegundos.
 
@@ -79,7 +81,8 @@ O agente reage a eventos do mundo real dentro do intervalo do ciclo
 
 2. **Chaves de API** — copie `.env.example` para `.env` e preencha:
 
-   - `ANTHROPIC_API_KEY` — em https://platform.claude.com
+   - `GEMINI_API_KEY` — em https://aistudio.google.com/apikey
+   - Telegram (opcional): token do bot via @BotFather + seu chat_id
    - Binance **testnet**: crie chaves em https://testnet.binance.vision (grátis)
    - Alpaca **paper**: crie conta em https://alpaca.markets (paper trading é grátis)
 
@@ -112,6 +115,17 @@ python -m phebos.main evaluate
    - exporte `PHEBOS_CONFIRM_LIVE=EU_ACEITO_O_RISCO`.
 
    Sem a variável de confirmação, o sistema **recusa** iniciar em modo real.
+
+## Notificações no Telegram
+
+Com `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` no `.env`, você recebe no celular:
+
+- 🤖 quando o agente inicia (modo, mercados, intervalo)
+- 🟢/🔴 cada compra/venda executada, com o valor e a justificativa da IA
+- 🚫 ordens vetadas pelo motor de risco (e o motivo)
+- ❗ erros no ciclo
+
+Para desativar: `notifications.telegram: false` no `config.yaml`.
 
 ## Kill switch
 
