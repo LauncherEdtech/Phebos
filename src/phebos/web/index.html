@@ -54,6 +54,10 @@
 <div class="cards">
   <div class="card"><div class="label">Patrimônio</div><div class="value" id="equity">—</div></div>
   <div class="card"><div class="label">Retorno do período</div><div class="value" id="return">—</div></div>
+  <div class="card"><div class="label">vs Buy-and-hold (alfa)</div><div class="value" id="alpha">—</div></div>
+  <div class="card"><div class="label">P&L realizado</div><div class="value" id="realized-pnl">—</div></div>
+  <div class="card"><div class="label">Taxa de acerto</div><div class="value" id="win-rate">—</div></div>
+  <div class="card"><div class="label">Fator de lucro</div><div class="value" id="profit-factor">—</div></div>
   <div class="card"><div class="label">Drawdown máx.</div><div class="value" id="drawdown">—</div></div>
   <div class="card"><div class="label">Trades executados</div><div class="value" id="executed">—</div></div>
   <div class="card"><div class="label">Ordens vetadas</div><div class="value" id="vetoed">—</div></div>
@@ -68,6 +72,28 @@
 <section id="criteria-section" style="display:none">
   <h2>🎯 Critérios para o modo real</h2>
   <ul class="criteria" id="criteria"></ul>
+</section>
+
+<section>
+  <h2>📌 Posições abertas (com a tese da IA)</h2>
+  <div style="overflow-x:auto"><table>
+    <thead><tr>
+      <th>Ativo</th><th>Mercado</th><th>Valor</th><th>Preço médio</th><th>Preço atual</th>
+      <th>P&L</th><th class="hide-sm">Tese</th>
+    </tr></thead>
+    <tbody id="positions"></tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>✅ Posições encerradas (P&L realizado)</h2>
+  <div style="overflow-x:auto"><table>
+    <thead><tr>
+      <th>Quando</th><th>Ativo</th><th>Entrada</th><th>Saída</th>
+      <th>P&L US$</th><th>P&L %</th><th>Motivo</th>
+    </tr></thead>
+    <tbody id="realized"></tbody>
+  </table></div>
 </section>
 
 <section>
@@ -106,9 +132,10 @@ let chart;
 async function getJSON(url) { const r = await fetch(url); return r.json(); }
 
 async function refresh() {
-  const [summary, equity, trades, decisions, research] = await Promise.all([
+  const [summary, equity, trades, decisions, research, positions, realized] = await Promise.all([
     getJSON('/api/summary'), getJSON('/api/equity'), getJSON('/api/trades'),
     getJSON('/api/decisions'), getJSON('/api/research'),
+    getJSON('/api/positions'), getJSON('/api/realized'),
   ]);
 
   // ── cabeçalho e cartões ──
@@ -124,6 +151,19 @@ async function refresh() {
   $('executed').textContent = summary.trades_executed ?? 0;
   $('vetoed').textContent = summary.trades_vetoed ?? 0;
   $('days').textContent = summary.empty ? '—' : summary.days_running.toFixed(1);
+
+  const alpha = $('alpha');
+  if (summary.alpha_pct == null) { alpha.textContent = '—'; alpha.className = 'value'; }
+  else {
+    alpha.textContent = (summary.alpha_pct >= 0 ? '+' : '') + summary.alpha_pct.toFixed(2) + '%';
+    alpha.className = 'value ' + (summary.alpha_pct >= 0 ? 'pos' : 'neg');
+  }
+  const rpnl = $('realized-pnl');
+  rpnl.textContent = (summary.realized_pnl_usd >= 0 ? '+' : '−') + fmtUsd(Math.abs(summary.realized_pnl_usd || 0));
+  rpnl.className = 'value ' + ((summary.realized_pnl_usd || 0) >= 0 ? 'pos' : 'neg');
+  $('win-rate').textContent = summary.win_rate_pct == null ? '—' : summary.win_rate_pct.toFixed(0) + '%';
+  $('profit-factor').textContent = summary.profit_factor == null
+    ? (summary.closed_trades > 0 ? '∞' : '—') : summary.profit_factor.toFixed(2);
 
   // ── critérios demo → real ──
   if (summary.demo_report) {
@@ -161,6 +201,30 @@ async function refresh() {
   });
 
   // ── tabelas ──
+  $('positions').innerHTML = positions.map(p => `
+    <tr>
+      <td><b>${esc(p.symbol)}</b></td>
+      <td>${p.market === 'crypto' ? '🪙 cripto' : '📊 ações'}</td>
+      <td>${fmtUsd(p.notional_usd)}</td>
+      <td>${fmtUsd(p.avg_price)}</td>
+      <td>${fmtUsd(p.last_price)}</td>
+      <td class="${p.pnl_pct >= 0 ? 'pos' : 'neg'}">${(p.pnl_pct >= 0 ? '+' : '') + p.pnl_pct.toFixed(2)}%</td>
+      <td class="hide-sm muted">${esc(p.thesis)}</td>
+    </tr>`).join('') || '<tr><td colspan="7" class="muted">nenhuma posição aberta</td></tr>';
+
+  const exitLabels = {stop_loss: '🛑 stop-loss', take_profit: '🎯 take-profit',
+                      trailing_stop: '📉 trailing stop', decisao_ia: '🧠 decisão da IA'};
+  $('realized').innerHTML = realized.map(r => `
+    <tr>
+      <td>${fmtTs(r.ts)}</td>
+      <td><b>${esc(r.symbol)}</b></td>
+      <td>${fmtUsd(r.avg_price)}</td>
+      <td>${fmtUsd(r.exit_price)}</td>
+      <td class="${r.pnl_usd >= 0 ? 'pos' : 'neg'}">${(r.pnl_usd >= 0 ? '+' : '−') + fmtUsd(Math.abs(r.pnl_usd))}</td>
+      <td class="${r.pnl_pct >= 0 ? 'pos' : 'neg'}">${(r.pnl_pct >= 0 ? '+' : '') + r.pnl_pct.toFixed(2)}%</td>
+      <td>${exitLabels[r.reason] || esc(r.reason)}</td>
+    </tr>`).join('') || '<tr><td colspan="7" class="muted">nenhuma posição encerrada ainda</td></tr>';
+
   $('trades').innerHTML = trades.map(t => `
     <tr>
       <td>${fmtTs(t.ts)}</td>

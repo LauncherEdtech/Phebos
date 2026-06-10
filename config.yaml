@@ -21,6 +21,10 @@ risk:
   max_open_positions: 6       # nº máximo de posições abertas por mercado
   max_daily_loss_pct: 3       # perda diária ≥ 3% → para de operar até o dia seguinte
   min_order_notional_usd: 10  # ignora ordens menores que isso
+  stop_loss_pct: 8            # venda automática se a posição cair 8% do preço médio
+  take_profit_pct: 15         # venda automática se a posição subir 15% do preço médio
+  trailing_stop_pct: 0        # venda se cair X% abaixo do PICO desde a entrada (0 = desligado)
+  event_dedup_days: 3         # o mesmo evento de notícia não é operado de novo por 3 dias
 
 # Período de avaliação do modo demo e critérios para liberar o modo real
 demo:
@@ -28,6 +32,7 @@ demo:
   min_trades: 20              # nº mínimo de trades executados
   min_return_pct: 2           # retorno total mínimo no período
   max_drawdown_pct: 10        # drawdown máximo tolerado no período
+  must_beat_benchmark: true   # exigir retorno ≥ buy-and-hold dos próprios símbolos
 
 # Inteligência de notícias
 news:

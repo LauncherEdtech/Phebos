@@ -63,6 +63,22 @@ pesquisador. Decida como um gestor humano experiente:
   a motivou. Use apenas símbolos presentes no snapshot.
 - Suas ordens passam por um motor de risco que pode vetá-las; dimensione o
   valor proporcionalmente à sua confiança.
+
+Você também recebe a sua MEMÓRIA:
+- POSIÇÕES ABERTAS com a tese que motivou cada uma e o P&L atual. Reavalie
+  cada tese: se a notícia/condição que justificou a posição se enfraqueceu ou
+  foi invalidada, proponha a venda. Se segue válida, mantenha.
+- SUAS DECISÕES RECENTES: mantenha coerência — não inverta a posição a cada
+  ciclo sem um fato novo que justifique.
+- EVENTOS JÁ OPERADOS: você JÁ reagiu a esses eventos de notícia. NÃO proponha
+  nova ordem motivada pelo mesmo evento (será vetada). Para cada ordem
+  motivada por notícia, preencha event_key com um identificador curto e
+  estável do evento em kebab-case (ex.: 'eua-reserva-estrategica-btc');
+  use o MESMO identificador que aparece na lista se for o mesmo evento.
+  Ordens puramente técnicas (sem notícia) levam event_key = null.
+
+O sistema tem stop-loss e take-profit automáticos em código — você não precisa
+vender só para proteger lucro/limitar perda pequena; venda quando a TESE mudar.
 """
 
 
@@ -97,9 +113,15 @@ class Analyst:
 
     # ── Etapa 2: decisão estruturada ────────────────────────────────
     def decide(self, snapshot: MarketSnapshot, indicators: dict,
-               news_briefing: str, risk_summary: str) -> TradingDecision:
+               news_briefing: str, risk_summary: str,
+               open_positions: list[dict] | None = None,
+               recent_decisions: list[dict] | None = None,
+               acted_events: list[dict] | None = None) -> TradingDecision:
+        memory = self._format_memory(open_positions or [], recent_decisions or [],
+                                     acted_events or [])
         user_prompt = (
             f"Limites de risco em vigor (informativo — aplicados em código):\n{risk_summary}\n\n"
+            f"=== MEMÓRIA ===\n{memory}\n\n"
             f"=== BRIEFING DE NOTÍCIAS (pesquisador) ===\n{news_briefing}\n\n"
             f"=== INDICADORES TÉCNICOS ===\n{json.dumps(indicators, indent=2, ensure_ascii=False)}\n\n"
             f"=== SNAPSHOT DO MERCADO ({snapshot.market}) ===\n"
@@ -123,3 +145,32 @@ class Analyst:
             log.warning("decisão fora do schema — tratando como 'não operar'")
             return TradingDecision(market_view="Análise indisponível neste ciclo.", orders=[])
         return decision
+
+    @staticmethod
+    def _format_memory(open_positions: list[dict], recent_decisions: list[dict],
+                       acted_events: list[dict]) -> str:
+        parts = ["POSIÇÕES ABERTAS (com a tese de cada uma):"]
+        if open_positions:
+            for p in open_positions:
+                parts.append(
+                    f"- {p['symbol']}: ${p['notional_usd']:.2f} | preço médio ${p['avg_price']:.4f} | "
+                    f"P&L atual {p['pnl_pct']:+.2f}% | aberta em {p['opened_at'][:16]}\n"
+                    f"  Tese: {p['thesis']}"
+                )
+        else:
+            parts.append("- (nenhuma)")
+
+        parts.append("\nSUAS DECISÕES RECENTES (mais nova primeiro):")
+        if recent_decisions:
+            for d in recent_decisions:
+                parts.append(f"- {d['ts'][:16]}: {d['market_view']} ({d['orders_proposed']} ordens)")
+        else:
+            parts.append("- (nenhuma)")
+
+        parts.append("\nEVENTOS JÁ OPERADOS (NÃO operar de novo):")
+        if acted_events:
+            for e in acted_events:
+                parts.append(f"- event_key='{e['event_key']}' → {e['side']} {e['symbol']} em {e['ts'][:16]}")
+        else:
+            parts.append("- (nenhum)")
+        return "\n".join(parts)

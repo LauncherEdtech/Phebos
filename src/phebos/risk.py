@@ -17,18 +17,71 @@ class RiskVerdict:
     reason: str
 
 
+@dataclass
+class ExitSignal:
+    """Venda forçada gerada pela disciplina de saída (independe da IA)."""
+
+    symbol: str
+    notional_usd: float
+    reason: str      # stop_loss | take_profit | trailing_stop
+    rationale: str
+
+
 class RiskEngine:
     def __init__(self, config: RiskConfig):
         self.config = config
 
     def summary(self) -> str:
         c = self.config
+        trailing = (f"- trailing stop de {c.trailing_stop_pct}% abaixo do pico\n"
+                    if c.trailing_stop_pct > 0 else "")
         return (
             f"- máx. {c.max_pct_per_trade}% do patrimônio por ordem\n"
             f"- máx. {c.max_open_positions} posições abertas\n"
             f"- perda diária máxima de {c.max_daily_loss_pct}% (depois disso, sem novas ordens no dia)\n"
-            f"- ordem mínima de ${c.min_order_notional_usd}"
+            f"- ordem mínima de ${c.min_order_notional_usd}\n"
+            f"- stop-loss automático em -{c.stop_loss_pct}% e take-profit em +{c.take_profit_pct}%\n"
+            f"{trailing}"
+            f"- o mesmo evento de notícia não é operado de novo por {c.event_dedup_days} dias"
         )
+
+    # ── disciplina de saída: roda ANTES da IA, em código ───────────
+    def check_exits(self, positions: list[dict], prices: dict[str, float]) -> list[ExitSignal]:
+        """Avalia stop-loss, take-profit e trailing stop das posições abertas.
+
+        Vendas de proteção fecham a posição inteira e NÃO passam pelo limite
+        de perda diária — reduzir risco é sempre permitido.
+        """
+        c = self.config
+        signals: list[ExitSignal] = []
+        for pos in positions:
+            price = prices.get(pos["symbol"])
+            if not price or pos["avg_price"] <= 0:
+                continue
+            change_pct = (price - pos["avg_price"]) / pos["avg_price"] * 100
+            notional = pos["qty"] * price
+
+            if change_pct <= -c.stop_loss_pct:
+                signals.append(ExitSignal(
+                    pos["symbol"], notional, "stop_loss",
+                    f"Stop-loss: {change_pct:+.2f}% vs preço médio "
+                    f"${pos['avg_price']:.4f} (limite -{c.stop_loss_pct}%)",
+                ))
+            elif change_pct >= c.take_profit_pct:
+                signals.append(ExitSignal(
+                    pos["symbol"], notional, "take_profit",
+                    f"Take-profit: {change_pct:+.2f}% vs preço médio "
+                    f"${pos['avg_price']:.4f} (alvo +{c.take_profit_pct}%)",
+                ))
+            elif c.trailing_stop_pct > 0 and pos["peak_price"] > 0:
+                drop_from_peak = (price - pos["peak_price"]) / pos["peak_price"] * 100
+                if drop_from_peak <= -c.trailing_stop_pct:
+                    signals.append(ExitSignal(
+                        pos["symbol"], notional, "trailing_stop",
+                        f"Trailing stop: {drop_from_peak:+.2f}% vs pico "
+                        f"${pos['peak_price']:.4f} (limite -{c.trailing_stop_pct}%)",
+                    ))
+        return signals
 
     def review(
         self,
@@ -36,14 +89,23 @@ class RiskEngine:
         snapshot: MarketSnapshot,
         allowed_symbols: List[str],
         daily_pnl_pct: float,
+        acted_events: set[tuple[str, str, str]] | None = None,
     ) -> List[RiskVerdict]:
         verdicts: List[RiskVerdict] = []
         open_symbols = {p.symbol for p in snapshot.positions}
+        acted_events = acted_events or set()
         c = self.config
 
         for order in orders:
             if kill_switch_active():
                 verdicts.append(RiskVerdict(order, False, "kill switch ativo (arquivo KILL presente)"))
+                continue
+            if order.event_key and (order.symbol, order.side, order.event_key) in acted_events:
+                verdicts.append(RiskVerdict(
+                    order, False,
+                    f"evento '{order.event_key}' já foi operado nos últimos "
+                    f"{c.event_dedup_days} dias (dedupe de notícias)",
+                ))
                 continue
             if daily_pnl_pct <= -c.max_daily_loss_pct:
                 verdicts.append(RiskVerdict(

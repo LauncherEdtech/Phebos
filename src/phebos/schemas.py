@@ -46,6 +46,14 @@ class OrderDecision(BaseModel):
     notional_usd: float = Field(description="Valor da ordem em dólares")
     confidence: Literal["low", "medium", "high"]
     rationale: str = Field(description="Justificativa curta e objetiva da ordem")
+    event_key: Optional[str] = Field(
+        default=None,
+        description=(
+            "Identificador curto e estável do EVENTO de notícia que motivou a ordem, "
+            "em kebab-case (ex.: 'eua-reserva-estrategica-btc'). Use null se a ordem "
+            "for puramente técnica, sem notícia motivadora."
+        ),
+    )
 
 
 class TradingDecision(BaseModel):

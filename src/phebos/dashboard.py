@@ -60,6 +60,7 @@ def summary(mode: str | None = None):
     report = evaluate_demo(journal, DemoConfig(**_raw_config().get("demo", {})))
 
     values = [v for _, v in series if v]
+    pf = report.profit_factor if report else None
     return {
         "mode": mode,
         "empty": not series,
@@ -71,11 +72,34 @@ def summary(mode: str | None = None):
         "trades_executed": counts.get(1, 0),
         "trades_vetoed": counts.get(0, 0),
         "last_update": series[-1][0] if series else None,
+        # métricas profissionais
+        "closed_trades": report.closed_trades if report else 0,
+        "realized_pnl_usd": report.realized_pnl_usd if report else 0,
+        "win_rate_pct": report.win_rate_pct if report else None,
+        "profit_factor": None if pf == float("inf") else pf,
+        "benchmark_return_pct": report.benchmark_return_pct if report else None,
+        "alpha_pct": report.alpha_pct if report else None,
         "demo_report": {
             "approved": report.approved,
             "criteria": [{"label": label, "ok": ok} for label, ok in report.criteria],
         } if report else None,
     }
+
+
+@app.get("/api/positions")
+def positions(mode: str | None = None):
+    mode = mode or _mode()
+    if not DB_PATH.exists():
+        return []
+    return Journal(DB_PATH).get_open_positions(mode)
+
+
+@app.get("/api/realized")
+def realized(mode: str | None = None, limit: int = 100):
+    mode = mode or _mode()
+    if not DB_PATH.exists():
+        return []
+    return Journal(DB_PATH).realized_list(mode, limit)
 
 
 @app.get("/api/equity")

@@ -23,6 +23,10 @@ class RiskConfig:
     max_open_positions: int = 6
     max_daily_loss_pct: float = 3.0
     min_order_notional_usd: float = 10.0
+    stop_loss_pct: float = 8.0       # venda forçada se cair X% abaixo do preço médio
+    take_profit_pct: float = 15.0    # venda forçada se subir X% acima do preço médio
+    trailing_stop_pct: float = 0.0   # venda se cair X% abaixo do pico (0 = desativado)
+    event_dedup_days: int = 3        # não operar o mesmo evento de notícia por X dias
 
 
 @dataclass
@@ -31,6 +35,7 @@ class DemoConfig:
     min_trades: int = 20
     min_return_pct: float = 2.0
     max_drawdown_pct: float = 10.0
+    must_beat_benchmark: bool = True  # exigir retorno ≥ buy-and-hold dos símbolos
 
 
 @dataclass

@@ -1,7 +1,7 @@
 # 📖 Guia completo do Phebos
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-06-10 — dashboard web, Docker e este guia.
+> Última atualização: 2026-06-10 — disciplina de saída (stop/take-profit), memória de teses, dedupe de notícias e P&L realizado com métricas profissionais.
 
 ## O que é
 
@@ -16,7 +16,13 @@ O Phebos é um agente autônomo de trading que:
    empresa lança produto mal recebido pelo mercado).
 4. Passa toda ordem por um **motor de risco em código** (a IA não tem a
    palavra final) e executa via API da corretora.
-5. Registra tudo em SQLite, **avisa no Telegram** e exibe num **dashboard web**.
+5. Protege cada posição com **stop-loss e take-profit automáticos** (e trailing
+   stop opcional) — saídas disciplinadas em código, independentes da IA.
+6. Tem **memória**: registra a tese de cada posição, relê as próprias decisões
+   e **não opera o mesmo evento de notícia duas vezes** (dedupe).
+7. Calcula **P&L realizado por posição** e métricas profissionais (taxa de
+   acerto, fator de lucro, comparação com buy-and-hold).
+8. Registra tudo em SQLite, **avisa no Telegram** e exibe num **dashboard web**.
 
 ⚠️ **Não há garantia de lucro.** O sistema nasce em modo demo (dinheiro
 fictício) e só vai ao modo real com a sua confirmação explícita.
@@ -87,10 +93,15 @@ python -m phebos.main evaluate       # relatório do período demo
 
 Abra **http://localhost:8000**. Ele mostra:
 
-- **Cartões**: patrimônio atual, retorno do período, drawdown máximo,
+- **Cartões**: patrimônio, retorno do período, **alfa vs buy-and-hold**,
+  **P&L realizado**, **taxa de acerto**, **fator de lucro**, drawdown,
   trades executados, ordens vetadas, dias rodando.
 - **Gráfico** da evolução do patrimônio (uma linha por mercado).
 - **Critérios demo → real** com checkmarks de progresso.
+- **Posições abertas**: valor, preço médio, P&L ao vivo e a **tese** que
+  motivou cada compra.
+- **Posições encerradas**: P&L realizado de cada saída e o motivo
+  (🛑 stop-loss, 🎯 take-profit, 📉 trailing, 🧠 decisão da IA).
 - **Operações**: cada compra/venda com valor, status (executada/vetada) e a
   justificativa da IA — ou o motivo do veto do motor de risco.
 - **Decisões da IA**: a leitura de mercado de cada ciclo.
@@ -151,7 +162,12 @@ ssh -L 8000:localhost:8000 usuario@ip-do-servidor
 | `risk.max_pct_per_trade` | % máximo do patrimônio por ordem |
 | `risk.max_open_positions` | Posições abertas simultâneas por mercado |
 | `risk.max_daily_loss_pct` | Perda diária que congela novas ordens até o dia seguinte |
+| `risk.stop_loss_pct` | Venda automática se a posição cair X% do preço médio (padrão 8) |
+| `risk.take_profit_pct` | Venda automática se a posição subir X% do preço médio (padrão 15) |
+| `risk.trailing_stop_pct` | Venda se cair X% abaixo do pico desde a entrada (0 = desligado) |
+| `risk.event_dedup_days` | Janela em que o mesmo evento de notícia não é re-operado (padrão 3) |
 | `demo.*` | Critérios do período demo (dias, trades, retorno, drawdown) |
+| `demo.must_beat_benchmark` | Exige retorno ≥ buy-and-hold dos símbolos para aprovar o demo |
 | `news.rss_feeds` | Feeds RSS por mercado |
 | `analyst.model` | `gemini-2.5-flash` (barato) ou `gemini-2.5-pro` (mais capaz) |
 | `analyst.web_search` | Pesquisa ativa com Busca Google (true/false) |
@@ -179,6 +195,26 @@ Depois de editar, reinicie: `docker compose restart` (ou Ctrl+C e rodar de novo)
 - **Local**: `touch KILL` na raiz do projeto → nenhuma ordem nova é enviada
   (o agente continua observando). `rm KILL` retoma.
 - **Docker**: `docker compose exec agent touch /app/data/KILL` / `rm /app/data/KILL`.
+
+> ⚠️ O kill switch bloqueia **todas** as ordens — inclusive os stop-loss
+> automáticos. Se ativá-lo com posições abertas, elas ficam desprotegidas:
+> avalie fechá-las manualmente na corretora.
+
+## 8.1 Como funciona a disciplina de saída
+
+A cada ciclo, ANTES de consultar a IA, o motor de risco verifica cada posição
+aberta contra o preço atual:
+
+1. caiu `stop_loss_pct`% abaixo do preço médio → **vende tudo** (🛑);
+2. subiu `take_profit_pct`% acima do preço médio → **vende tudo** (🎯);
+3. (opcional) caiu `trailing_stop_pct`% abaixo do **pico** desde a entrada → vende (📉).
+
+Essas vendas não passam pela IA nem pelo congelamento de perda diária —
+reduzir risco é sempre permitido. Cada saída realiza o P&L (registrado na
+tabela `realized` e no dashboard) e avisa no Telegram.
+
+A IA é instruída a vender quando a **tese** da posição enfraquecer — as
+proteções mecânicas cuidam do resto.
 
 ## 9. Solução de problemas
 

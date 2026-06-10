@@ -52,6 +52,18 @@ class Notifier:
             f"🧾 ordem: {order_id}"
         )
 
+    def exit_order(self, mode: str, market: str, symbol: str, reason: str,
+                   notional_usd: float, pnl_usd: float, pnl_pct: float) -> None:
+        labels = {"stop_loss": "🛑 STOP-LOSS", "take_profit": "🎯 TAKE-PROFIT",
+                  "trailing_stop": "📉 TRAILING STOP"}
+        tag = "REAL" if mode == "live" else "demo"
+        pnl_emoji = "🟢" if pnl_usd >= 0 else "🔴"
+        self.send(
+            f"{labels.get(reason, reason)} <b>{symbol}</b> — ${notional_usd:.2f} "
+            f"<i>({tag} · {market})</i>\n"
+            f"{pnl_emoji} P&L realizado: ${pnl_usd:+.2f} ({pnl_pct:+.2f}%)"
+        )
+
     def vetoed(self, market: str, side: str, symbol: str,
                notional_usd: float, reason: str) -> None:
         self.send(
