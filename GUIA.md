@@ -1,7 +1,7 @@
 # 📖 Guia completo do Phebos
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-06-10 — calendário econômico, auto-reflexão, sentimento social, sizing dinâmico (ATR/convicção/regime), multi-timeframe, anti-tilt, calibração de confiança, novo frontend (branco/preto/dourado) com aba de histórico e suíte com 119 testes.
+> Última atualização: 2026-06-10 — instalador automático `setup.sh` (1 comando instala Docker, configura chaves e sobe tudo).
 
 ## O que é
 
@@ -59,7 +59,26 @@ Depois copie `.env.example` para `.env` e preencha tudo.
 
 ---
 
-## 2. Rodando com Docker (recomendado)
+## 2. Instalação em 1 comando (recomendado) ⚡
+
+Em qualquer Linux Ubuntu/Debian (VM, VPS ou WSL2 no Windows):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/LauncherEdtech/Phebos/main/setup.sh | bash
+```
+
+O instalador faz tudo sozinho:
+1. instala Docker e Docker Compose (se faltarem);
+2. clona/atualiza o repositório em `~/Phebos`;
+3. pergunta as chaves interativamente (Gemini obrigatória; Binance/Alpaca
+   opcionais — mercado sem chave é desativado automaticamente; Telegram opcional);
+4. cria o `.env` com permissão restrita;
+5. sobe agente + dashboard e mostra o status e os comandos úteis.
+
+Pode rodar de novo quando quiser: ele atualiza o código e pergunta se você
+quer reconfigurar as chaves (sem apagar nada por conta própria).
+
+## 2.1 Rodando com Docker manualmente
 
 Com Docker e Docker Compose instalados:
 
