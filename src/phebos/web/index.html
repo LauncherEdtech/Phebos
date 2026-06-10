@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phebos — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e;
+    --green: #3fb950; --red: #f85149; --blue: #58a6ff; --yellow: #d29922;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--text);
+         font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; padding: 20px; }
+  header { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+  h1 { font-size: 22px; }
+  .badge { padding: 3px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; }
+  .badge.demo { background: #1f6feb33; color: var(--blue); border: 1px solid var(--blue); }
+  .badge.live { background: #f8514933; color: var(--red); border: 1px solid var(--red); }
+  .muted { color: var(--muted); font-size: 12px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  .card .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+  .pos { color: var(--green); } .neg { color: var(--red); }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+            padding: 16px; margin-bottom: 18px; }
+  section h2 { font-size: 15px; margin-bottom: 12px; color: var(--blue); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px;
+       border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 6px 8px; border-bottom: 1px solid #21262d; vertical-align: top; }
+  .side-buy { color: var(--green); font-weight: 700; }
+  .side-sell { color: var(--red); font-weight: 700; }
+  .ok { color: var(--green); } .veto { color: var(--yellow); }
+  details { margin-bottom: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
+  summary { cursor: pointer; color: var(--text); font-weight: 600; }
+  details pre { white-space: pre-wrap; color: var(--muted); margin-top: 10px; font-family: inherit; }
+  .criteria li { list-style: none; padding: 2px 0; }
+  .chart-box { position: relative; height: 320px; }
+  footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 10px; }
+  @media (max-width: 700px) { .hide-sm { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🤖 Phebos</h1>
+  <span id="mode-badge" class="badge demo">…</span>
+  <span class="muted" id="last-update"></span>
+</header>
+
+<div class="cards">
+  <div class="card"><div class="label">Patrimônio</div><div class="value" id="equity">—</div></div>
+  <div class="card"><div class="label">Retorno do período</div><div class="value" id="return">—</div></div>
+  <div class="card"><div class="label">Drawdown máx.</div><div class="value" id="drawdown">—</div></div>
+  <div class="card"><div class="label">Trades executados</div><div class="value" id="executed">—</div></div>
+  <div class="card"><div class="label">Ordens vetadas</div><div class="value" id="vetoed">—</div></div>
+  <div class="card"><div class="label">Dias rodando</div><div class="value" id="days">—</div></div>
+</div>
+
+<section>
+  <h2>📈 Evolução do patrimônio (US$)</h2>
+  <div class="chart-box"><canvas id="equity-chart"></canvas></div>
+</section>
+
+<section id="criteria-section" style="display:none">
+  <h2>🎯 Critérios para o modo real</h2>
+  <ul class="criteria" id="criteria"></ul>
+</section>
+
+<section>
+  <h2>💱 Operações</h2>
+  <div style="overflow-x:auto"><table>
+    <thead><tr>
+      <th>Quando</th><th>Mercado</th><th>Ativo</th><th>Lado</th><th>Valor</th>
+      <th>Status</th><th class="hide-sm">Justificativa da IA / motivo do veto</th>
+    </tr></thead>
+    <tbody id="trades"></tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>🧠 Decisões da IA</h2>
+  <div style="overflow-x:auto"><table>
+    <thead><tr><th>Quando</th><th>Mercado</th><th>Leitura do mercado</th><th>Ordens</th></tr></thead>
+    <tbody id="decisions"></tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>📰 Briefings de notícias (pesquisador)</h2>
+  <div id="research"></div>
+</section>
+
+<footer>Atualiza automaticamente a cada 60s · Phebos</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmtUsd = v => '$' + Number(v).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const fmtTs = ts => ts ? new Date(ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '—';
+const esc = s => (s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let chart;
+
+async function getJSON(url) { const r = await fetch(url); return r.json(); }
+
+async function refresh() {
+  const [summary, equity, trades, decisions, research] = await Promise.all([
+    getJSON('/api/summary'), getJSON('/api/equity'), getJSON('/api/trades'),
+    getJSON('/api/decisions'), getJSON('/api/research'),
+  ]);
+
+  // ── cabeçalho e cartões ──
+  const badge = $('mode-badge');
+  badge.textContent = summary.mode === 'live' ? '🔴 DINHEIRO REAL' : '🟦 DEMO';
+  badge.className = 'badge ' + (summary.mode === 'live' ? 'live' : 'demo');
+  $('last-update').textContent = summary.last_update ? 'última atualização: ' + fmtTs(summary.last_update) : 'sem dados ainda — rode o agente';
+  $('equity').textContent = summary.empty ? '—' : fmtUsd(summary.equity_now);
+  const ret = $('return');
+  ret.textContent = summary.empty ? '—' : (summary.return_pct >= 0 ? '+' : '') + summary.return_pct.toFixed(2) + '%';
+  ret.className = 'value ' + (summary.return_pct >= 0 ? 'pos' : 'neg');
+  $('drawdown').textContent = summary.empty ? '—' : summary.max_drawdown_pct.toFixed(2) + '%';
+  $('executed').textContent = summary.trades_executed ?? 0;
+  $('vetoed').textContent = summary.trades_vetoed ?? 0;
+  $('days').textContent = summary.empty ? '—' : summary.days_running.toFixed(1);
+
+  // ── critérios demo → real ──
+  if (summary.demo_report) {
+    $('criteria-section').style.display = '';
+    $('criteria').innerHTML = summary.demo_report.criteria.map(c =>
+      `<li>${c.ok ? '✅' : '⬜'} ${esc(c.label)}</li>`).join('') +
+      (summary.demo_report.approved
+        ? '<li style="margin-top:8px" class="ok"><b>Critérios atingidos — apto à promoção ao modo real.</b></li>' : '');
+  }
+
+  // ── gráfico de patrimônio (uma linha por mercado) ──
+  const markets = [...new Set(equity.map(e => e.market))];
+  const colors = {crypto: '#d29922', stocks: '#58a6ff'};
+  const datasets = markets.map(m => ({
+    label: m === 'crypto' ? 'Cripto (Binance)' : 'Ações (Alpaca)',
+    data: equity.filter(e => e.market === m).map(e => ({x: e.ts, y: e.equity_usd})),
+    borderColor: colors[m] || '#3fb950', backgroundColor: 'transparent',
+    pointRadius: 0, borderWidth: 2, tension: .25,
+  }));
+  if (chart) chart.destroy();
+  chart = new Chart($('equity-chart'), {
+    type: 'line',
+    data: {datasets},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: {mode: 'nearest', intersect: false},
+      scales: {
+        x: {type: 'category', ticks: {color: '#8b949e', maxTicksLimit: 10,
+            callback: function(v) { return fmtTs(this.getLabelForValue(v)); }},
+            grid: {color: '#21262d'}},
+        y: {ticks: {color: '#8b949e', callback: v => '$' + v.toLocaleString()}, grid: {color: '#21262d'}},
+      },
+      plugins: {legend: {labels: {color: '#e6edf3'}}},
+    },
+  });
+
+  // ── tabelas ──
+  $('trades').innerHTML = trades.map(t => `
+    <tr>
+      <td>${fmtTs(t.ts)}</td>
+      <td>${t.market === 'crypto' ? '🪙 cripto' : '📊 ações'}</td>
+      <td><b>${esc(t.symbol)}</b></td>
+      <td class="side-${t.side}">${t.side === 'buy' ? 'COMPRA' : 'VENDA'}</td>
+      <td>${fmtUsd(t.notional_usd)}</td>
+      <td class="${t.approved ? 'ok' : 'veto'}">${t.approved ? '✔ executada' : '🚫 vetada'}</td>
+      <td class="hide-sm muted">${esc(t.approved ? t.rationale : t.reason + ' — ' + t.rationale)}</td>
+    </tr>`).join('') || '<tr><td colspan="7" class="muted">nenhuma operação ainda</td></tr>';
+
+  $('decisions').innerHTML = decisions.map(d => `
+    <tr>
+      <td>${fmtTs(d.ts)}</td>
+      <td>${d.market === 'crypto' ? '🪙 cripto' : '📊 ações'}</td>
+      <td>${esc(d.market_view)}</td>
+      <td>${d.orders_proposed}</td>
+    </tr>`).join('') || '<tr><td colspan="4" class="muted">nenhuma decisão ainda</td></tr>';
+
+  $('research').innerHTML = research.map(r => `
+    <details>
+      <summary>${fmtTs(r.ts)} · ${r.market === 'crypto' ? '🪙 cripto' : '📊 ações'}</summary>
+      <pre>${esc(r.briefing)}</pre>
+    </details>`).join('') || '<p class="muted">nenhum briefing ainda</p>';
+}
+
+refresh();
+setInterval(refresh, 60_000);
+</script>
+</body>
+</html>

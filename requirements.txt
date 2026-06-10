@@ -3,3 +3,5 @@ pydantic>=2.7
 python-dotenv>=1.0
 PyYAML>=6.0
 requests>=2.32
+fastapi>=0.110
+uvicorn>=0.29

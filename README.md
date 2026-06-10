@@ -1,5 +1,7 @@
 # Phebos — Agente Autônomo de Trading com IA
 
+> 📖 **Manual completo de instalação, uso, dashboard e deploy: [GUIA.md](GUIA.md)**
+
 Sistema autônomo que usa a **API do Gemini** (Google) para analisar o mercado
 e tomar decisões de compra/venda em dois mercados:
 
@@ -101,7 +103,12 @@ python -m phebos.main once
 # Relatório do período demo: retorno, drawdown, taxa de acerto
 # e veredito sobre os critérios de promoção ao modo real
 python -m phebos.main evaluate
+
+# Dashboard web com gráficos, operações e decisões (http://localhost:8000)
+python -m phebos.main dashboard
 ```
+
+Ou com Docker (agente + dashboard juntos): `docker compose up -d --build`
 
 ## Modo demo → modo real
 

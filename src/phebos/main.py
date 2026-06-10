@@ -4,9 +4,11 @@ Comandos:
     python -m phebos.main run        # loop contínuo
     python -m phebos.main once       # um único ciclo (teste)
     python -m phebos.main evaluate   # relatório do período demo
+    python -m phebos.main dashboard  # dashboard web em http://localhost:8000
 """
 
 import logging
+import os
 import sys
 import time
 
@@ -106,6 +108,12 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     command = sys.argv[1] if len(sys.argv) > 1 else "run"
+
+    if command == "dashboard":
+        from .dashboard import serve
+        serve(port=int(os.environ.get("PHEBOS_DASHBOARD_PORT", "8000")))
+        return
+
     settings = load_settings()
     journal = Journal()
 
@@ -132,7 +140,7 @@ def main() -> None:
         run_cycle(settings, brokers, analyst, risk, journal, notifier)
         return
     if command != "run":
-        print(f"Comando desconhecido: {command} (use run | once | evaluate)")
+        print(f"Comando desconhecido: {command} (use run | once | evaluate | dashboard)")
         sys.exit(1)
 
     while True:

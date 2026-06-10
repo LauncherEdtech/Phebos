@@ -52,7 +52,8 @@ def _now() -> str:
 
 class Journal:
     def __init__(self, path: Path = DB_PATH):
-        self.conn = sqlite3.connect(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.conn = sqlite3.connect(path, timeout=10)
         self.conn.executescript(_SCHEMA)
 
     def log_decision(self, mode: str, market: str, market_view: str, orders_proposed: int) -> None:
@@ -98,10 +99,25 @@ class Journal:
         return (rows[-1][0] - rows[0][0]) / rows[0][0] * 100
 
     def equity_series(self, mode: str):
-        return self.conn.execute(
-            "SELECT ts, SUM(equity_usd) FROM equity WHERE mode=? GROUP BY ts ORDER BY ts",
+        """Patrimônio TOTAL ao longo do tempo, somando os mercados.
+
+        Cada mercado registra em timestamps próprios; usamos forward-fill
+        (último valor conhecido de cada mercado) e só começamos a série
+        quando todos os mercados já registraram ao menos uma vez — senão o
+        total daria um salto artificial na primeira aparição de um mercado.
+        """
+        rows = self.conn.execute(
+            "SELECT ts, market, equity_usd FROM equity WHERE mode=? ORDER BY ts",
             (mode,),
         ).fetchall()
+        markets = {market for _, market, _ in rows}
+        last: dict[str, float] = {}
+        series = []
+        for ts, market, eq in rows:
+            last[market] = eq
+            if len(last) == len(markets):
+                series.append((ts, sum(last.values())))
+        return series
 
     def executed_trades(self, mode: str):
         return self.conn.execute(

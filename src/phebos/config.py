@@ -9,8 +9,10 @@ import yaml
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[2]
-KILL_FILE = ROOT / "KILL"
-DB_PATH = ROOT / "phebos.db"
+# Em Docker, PHEBOS_DATA_DIR=/app/data persiste banco e kill switch num volume
+DATA_DIR = Path(os.environ.get("PHEBOS_DATA_DIR", str(ROOT)))
+KILL_FILE = DATA_DIR / "KILL"
+DB_PATH = DATA_DIR / "phebos.db"
 
 LIVE_CONFIRMATION = "EU_ACEITO_O_RISCO"
 

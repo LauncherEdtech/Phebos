@@ -1,0 +1,24 @@
+services:
+  # O agente que analisa e opera
+  agent:
+    build: .
+    env_file: .env
+    volumes:
+      - phebos-data:/app/data
+      - ./config.yaml:/app/config.yaml:ro
+    restart: unless-stopped
+
+  # O dashboard web (http://localhost:8000)
+  dashboard:
+    build: .
+    command: python -m phebos.main dashboard
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - phebos-data:/app/data
+      - ./config.yaml:/app/config.yaml:ro
+    restart: unless-stopped
+
+volumes:
+  phebos-data:

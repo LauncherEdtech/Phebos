@@ -9,6 +9,8 @@ dependencies = [
     "python-dotenv>=1.0",
     "PyYAML>=6.0",
     "requests>=2.32",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
 ]
 
 [build-system]
@@ -17,3 +19,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+phebos = ["web/*.html"]
