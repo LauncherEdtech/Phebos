@@ -1,0 +1,58 @@
+"""Modelos de dados: snapshot de mercado e decisão estruturada da IA."""
+
+from typing import List, Literal, Optional
+
+from pydantic import BaseModel, Field
+
+
+class Candle(BaseModel):
+    open_time: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+
+
+class SymbolData(BaseModel):
+    symbol: str
+    last_price: float
+    change_24h_pct: Optional[float] = None
+    candles: List[Candle] = Field(default_factory=list)
+
+
+class Position(BaseModel):
+    symbol: str
+    qty: float
+    avg_price: float
+    market_value: float
+    unrealized_pnl: float
+
+
+class MarketSnapshot(BaseModel):
+    market: Literal["crypto", "stocks"]
+    timestamp: str
+    equity_usd: float
+    cash_usd: float
+    positions: List[Position]
+    symbols: List[SymbolData]
+
+
+class OrderDecision(BaseModel):
+    """Uma ordem proposta pela IA — sempre validada pelo motor de risco antes de executar."""
+
+    symbol: str
+    side: Literal["buy", "sell"]
+    notional_usd: float = Field(description="Valor da ordem em dólares")
+    confidence: Literal["low", "medium", "high"]
+    rationale: str = Field(description="Justificativa curta e objetiva da ordem")
+
+
+class TradingDecision(BaseModel):
+    """Resposta estruturada do analista (Claude) para um ciclo de análise."""
+
+    market_view: str = Field(description="Leitura geral do mercado neste momento, em 2-3 frases")
+    orders: List[OrderDecision] = Field(
+        default_factory=list,
+        description="Ordens propostas. Lista vazia significa: não operar neste ciclo.",
+    )

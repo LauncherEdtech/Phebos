@@ -1,0 +1,34 @@
+# Configuração do Phebos
+# "demo"  → Binance testnet + Alpaca paper trading (dinheiro fictício)
+# "live"  → dinheiro real (exige PHEBOS_CONFIRM_LIVE=EU_ACEITO_O_RISCO no ambiente)
+mode: demo
+
+# Intervalo entre ciclos de análise, em minutos
+interval_minutes: 15
+
+markets:
+  crypto:
+    enabled: true
+    symbols: [BTCUSDT, ETHUSDT, SOLUSDT]
+  stocks:
+    enabled: true
+    symbols: [AAPL, MSFT, NVDA, SPY]
+
+# Motor de risco — limites rígidos aplicados em código, fora do alcance da IA
+risk:
+  max_pct_per_trade: 5        # cada ordem ≤ 5% do patrimônio do mercado
+  max_open_positions: 6       # nº máximo de posições abertas por mercado
+  max_daily_loss_pct: 3       # perda diária ≥ 3% → para de operar até o dia seguinte
+  min_order_notional_usd: 10  # ignora ordens menores que isso
+
+# Período de avaliação do modo demo e critérios para liberar o modo real
+demo:
+  min_days: 30                # tempo mínimo rodando em demo
+  min_trades: 20              # nº mínimo de trades executados
+  min_return_pct: 2           # retorno total mínimo no período
+  max_drawdown_pct: 10        # drawdown máximo tolerado no período
+
+analyst:
+  model: claude-opus-4-8
+  # Instrução extra opcional anexada ao prompt do analista (estilo, viés, etc.)
+  extra_instructions: ""
