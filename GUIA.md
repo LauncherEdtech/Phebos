@@ -1,7 +1,7 @@
 # 📖 Guia completo do Phebos
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-06-10 — correções de execução: caixa decrescente entre ordens do mesmo ciclo, motivo exato dos erros da Binance/Alpaca nos logs, tolerância a relógio dessincronizado (recvWindow + offset com retry) e rejeição de uma ordem não aborta as demais.
+> Última atualização: 2026-06-10 — versão visível (log de boot + rodapé do dashboard) e botão 'limpar logs', para confirmar qual código está rodando e separar execuções.
 
 ## O que é
 

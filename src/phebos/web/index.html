@@ -277,6 +277,7 @@
       <button class="chip" data-lf="INFO">Info</button>
       <button class="chip" data-lf="WARNING">Avisos</button>
       <button class="chip" data-lf="ERROR">Erros</button>
+      <button class="chip" id="btn-clear-logs" style="margin-left:auto">🗑 Limpar logs</button>
     </div>
     <div class="terminal" id="logbox"><span class="muted">carregando logs…</span></div>
   </section>
@@ -342,7 +343,7 @@
 </div>
 </main>
 
-<footer>Phebos · atualiza automaticamente a cada 60s</footer>
+<footer>Phebos <span id="app-version">—</span> · atualiza automaticamente a cada 60s</footer>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -650,10 +651,25 @@ $('btn-interval-save').onclick = async () => {
   }
 };
 
+$('btn-clear-logs').onclick = async () => {
+  try {
+    await fetch('/api/logs/clear', {method: 'POST'});
+    $('logbox').innerHTML = '<span class="muted">logs limpos — aguardando o próximo ciclo</span>';
+  } catch (e) {}
+};
+
+async function loadVersion() {
+  try {
+    const v = await getJSON('/api/version');
+    $('app-version').textContent = 'v' + v.version;
+  } catch (e) {}
+}
+
 refresh();
 refreshLogs();
 loadKeysStatus();
 loadInterval();
+loadVersion();
 setInterval(refresh, 60_000);
 setInterval(refreshLogs, 10_000);
 setInterval(loadInterval, 30_000);

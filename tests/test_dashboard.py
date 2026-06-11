@@ -129,3 +129,18 @@ def test_run_now_endpoint(client):
     # o pedido fica registrado para o agente consumir
     import phebos.config
     assert phebos.config.consume_run_now() is True
+
+
+def test_version_endpoint(client):
+    from phebos import __version__
+    assert client.get("/api/version").json()["version"] == __version__
+
+
+def test_logs_clear_endpoint(client):
+    import phebos.journal
+    j = phebos.journal.Journal()
+    j.write_log("INFO", "linha 1")
+    j.write_log("ERROR", "linha 2")
+    assert len(client.get("/api/logs").json()) == 2
+    assert client.post("/api/logs/clear").json()["cleared"] is True
+    assert client.get("/api/logs").json() == []

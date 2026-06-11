@@ -261,12 +261,28 @@ def keys_test():
     return keys.run_tests()
 
 
+@app.get("/api/version")
+def version():
+    from . import __version__
+    return {"version": __version__}
+
+
 @app.get("/api/logs")
 def logs(limit: int = 300, level: str | None = None):
     """Logs do agente (gravados pelo JournalLogHandler), mais novos primeiro."""
     if not DB_PATH.exists():
         return []
     return Journal(DB_PATH).get_logs(limit, level)
+
+
+@app.post("/api/logs/clear")
+def logs_clear():
+    """Apaga os logs acumulados — útil para separar execuções/ciclos."""
+    if DB_PATH.exists():
+        conn = _conn()
+        conn.execute("DELETE FROM logs")
+        conn.commit()
+    return {"cleared": True}
 
 
 @app.get("/api/research")

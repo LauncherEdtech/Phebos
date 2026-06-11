@@ -299,8 +299,9 @@ def main() -> None:
 
     banner = "DINHEIRO REAL" if settings.is_live else "DEMO (dinheiro fictício)"
     market_names = [b.market for b, _ in brokers]
-    log.info("Phebos iniciado — modo %s | intervalo %d min | mercados: %s",
-             banner, settings.interval_minutes, ", ".join(market_names))
+    from . import __version__
+    log.info("Phebos v%s iniciado — modo %s | intervalo %d min | mercados: %s",
+             __version__, banner, settings.interval_minutes, ", ".join(market_names))
     notifier.startup(settings.mode, market_names, settings.interval_minutes)
 
     if command == "once":
