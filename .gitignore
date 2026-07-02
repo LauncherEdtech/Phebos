@@ -1,9 +1,7 @@
 .env
 __pycache__/
 *.pyc
-phebos.db
-KILL
-secrets.env
+pixzap.db
 .venv/
 venv/
 *.egg-info/

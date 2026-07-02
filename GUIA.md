@@ -1,317 +1,163 @@
-# 📖 Guia completo do Phebos
+# 📖 Guia completo do PixZap
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-06-10 — versão visível (log de boot + rodapé do dashboard) e botão 'limpar logs', para confirmar qual código está rodando e separar execuções.
+> Última atualização: 2026-07-02 — nasce o PixZap: o repositório deixa de ser o
+> bot de trading (legado removido; histórico preservado no git) e passa a ser o
+> bot de confirmação/conciliação de Pix para vendas pelo WhatsApp.
 
 ## O que é
 
-O Phebos é um agente autônomo de trading que:
+O PixZap elimina a conferência manual de Pix de quem vende pelo WhatsApp:
 
-1. Monitora **cripto** (Binance) e **ações dos EUA** (Alpaca) em ciclos de
-   15 minutos (configurável).
-2. Lê **notícias** (RSS + pesquisa ativa com a Busca Google via API do Gemini)
-   e calcula **indicadores técnicos** (RSI, médias móveis, volume).
-3. Decide comprar/vender/esperar como um gestor humano — priorizando notícias
-   fortes ainda não precificadas (ex.: governo compra BTC para reserva,
-   empresa lança produto mal recebido pelo mercado).
-4. Passa toda ordem por um **motor de risco em código** (a IA não tem a
-   palavra final) e executa via API da corretora.
-5. Protege cada posição com **stop-loss e take-profit automáticos** (e trailing
-   stop opcional) — saídas disciplinadas em código, independentes da IA.
-6. Tem **memória**: registra a tese de cada posição, relê as próprias decisões
-   e **não opera o mesmo evento de notícia duas vezes** (dedupe).
-7. Calcula **P&L realizado por posição** e métricas profissionais (taxa de
-   acerto, fator de lucro, comparação com buy-and-hold).
-8. **Antecipa eventos**: consulta o calendário econômico (Fed, CPI, payroll,
-   earnings) uma vez por dia e reduz exposição às vésperas de evento forte.
-9. **Aprende com os próprios erros**: a cada 7 dias revisa os trades fechados
-   e gera lições que entram no prompt dos ciclos seguintes; acompanha a
-   **calibração de confiança** (acerto real por nível de convicção declarado).
-10. Lê o **sentimento social** (Reddit, StockTwits, Fear & Greed) para captar
-    a reação do público antes de virar manchete.
-11. **Dimensiona posições dinamicamente**: convicção × volatilidade (ATR) ×
-    regime do mercado (alta/baixa/lateral, multi-timeframe 1h/4h/1d) — e corta
-    o sizing pela metade após sequência de perdas (**anti-tilt**).
-12. Registra tudo em SQLite, **avisa no Telegram** e exibe num **dashboard web**
-    com aba de histórico completo (leituras, pensamentos, operações, reflexões).
+1. O vendedor manda `cobrar 150,00 João pedido 12` no próprio WhatsApp.
+2. O bot cria a cobrança no PSP (provedor de pagamento) e devolve o
+   **Pix copia-e-cola** para encaminhar ao cliente.
+3. Quando o dinheiro **cai de verdade**, o PSP chama nosso webhook
+   autenticado e o bot confirma no chat: "✅ Pix de R$ 150,00 confirmado".
+4. Screenshot de comprovante deixa de valer — o que confirma é o webhook.
+   Isso mata o **golpe do comprovante falso** na origem.
 
-⚠️ **Não há garantia de lucro.** O sistema nasce em modo demo (dinheiro
-fictício) e só vai ao modo real com a sua confirmação explícita.
+A origem do produto está documentada em
+[docs/analise-mercado-dores-globais.md](docs/analise-mercado-dores-globais.md)
+(pesquisa de mercado com verificação adversarial, jul/2026).
 
----
+## Comandos do bot (no WhatsApp)
 
-## 1. Pré-requisitos e chaves
+| Comando | O que faz |
+|---|---|
+| `cobrar 150,00 João pedido 12` | cria cobrança e devolve o copia-e-cola |
+| `pendentes` | lista cobranças aguardando pagamento + total a receber |
+| `hoje` | resumo do dia: pagas, total recebido, pendentes |
+| `cancelar 12` | cancela a cobrança #12 (se ainda pendente) |
+| `ajuda` | mostra o menu |
 
-| Chave | Onde criar | Custo |
-|---|---|---|
-| `GEMINI_API_KEY` | https://aistudio.google.com/apikey | grátis (nível free) / centavos no pago |
-| Binance testnet | https://testnet.binance.vision | grátis |
-| Alpaca paper | https://alpaca.markets → API Keys (Paper) | grátis |
-| Telegram (opcional) | @BotFather no Telegram | grátis |
+Valores aceitos: `150`, `150,50`, `R$ 1.500,50`.
 
-**Telegram passo a passo:**
-1. Fale com `@BotFather` → `/newbot` → copie o **token**.
-2. Envie qualquer mensagem para o seu bot recém-criado.
-3. Abra `https://api.telegram.org/bot<SEU_TOKEN>/getUpdates` no navegador e
-   copie o número em `"chat":{"id": ...}` → esse é o `TELEGRAM_CHAT_ID`.
+## Regras de segurança (nunca enfraquecer sem pedido explícito)
 
-Depois copie `.env.example` para `.env` e preencha tudo.
+1. **Só o webhook autenticado do PSP confirma pagamento.** Sem token/assinatura
+   válida → HTTP 401 e nada muda. Nunca confirmar por mensagem no chat.
+2. **Conciliação exata ao centavo** (`matching.py`): valor divergente não
+   quita a cobrança — alerta o vendedor e a cobrança segue pendente.
+3. **Idempotência**: o mesmo txid confirmado duas vezes é webhook repetido —
+   ignorado em silêncio (índice único no SQLite garante).
+4. **Allowlist** (`seller_numbers` no config.yaml): mensagem de número não
+   autorizado é ignorada sem resposta.
+5. **Dinheiro é sempre `int` em centavos** — nunca float.
+6. **Segredos só em variáveis de ambiente** (.env), nunca no config.yaml.
 
----
-
-## 2. Instalação em 1 comando (recomendado) ⚡
-
-Em qualquer Linux Ubuntu/Debian (VM, VPS ou WSL2 no Windows):
+## Instalação (desenvolvimento)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/LauncherEdtech/Phebos/main/setup.sh | bash
+pip install -e . && pip install pytest httpx
+cp .env.example .env       # pode deixar vazio para usar os fakes
+python -m pytest tests     # 19 testes, tudo com fakes (sem rede externa)
+python -m pixzap.main      # http://localhost:8000
 ```
 
-O instalador faz tudo sozinho:
-1. instala Docker e Docker Compose (se faltarem);
-2. clona/atualiza o repositório em `~/Phebos`;
-3. pergunta as chaves interativamente (Gemini obrigatória; Binance/Alpaca
-   opcionais — mercado sem chave é desativado automaticamente; Telegram opcional);
-4. cria o `.env` com permissão restrita;
-5. sobe agente + dashboard e mostra o status e os comandos úteis.
-
-Pode rodar de novo quando quiser: ele atualiza o código e pergunta se você
-quer reconfigurar as chaves (sem apagar nada por conta própria).
-
-## 2.1 Rodando com Docker manualmente
-
-Com Docker e Docker Compose instalados:
+Com `provider: fake` (padrão do config.yaml) dá para simular tudo localmente:
 
 ```bash
-git clone <este-repositório> && cd Phebos
-cp .env.example .env        # preencha as chaves
+# vendedor manda comando (simula o webhook do WhatsApp)
+curl -X POST localhost:8000/webhook/whatsapp \
+  -H 'Content-Type: application/json' \
+  -d '{"messages":[{"from":"5511999998888","text":"cobrar 150 João"}]}'
+
+# o Pix "cai" (simula o webhook do PSP fake; token padrão: "teste")
+curl -X POST localhost:8000/webhook/psp \
+  -H 'Content-Type: application/json' -H 'x-fake-token: teste' \
+  -d '{"event":"PAYMENT_RECEIVED","txid":"FAKE00000001","amount_cents":15000,"payer_name":"Maria"}'
+```
+
+(lembre de colocar `5511999998888` em `seller_numbers` no config.yaml)
+
+## Configuração
+
+`config.yaml` (nada de segredo aqui):
+
+```yaml
+seller_numbers: ["5511999998888"]   # quem pode dar comandos
+timezone: America/Sao_Paulo
+port: 8000
+whatsapp:
+  provider: cloud                    # fake | cloud
+  phone_number_id: "1234567890"
+psp:
+  provider: asaas                    # fake | asaas | mercadopago
+  asaas_sandbox: true
+  asaas_pix_key: "sua-chave-pix"
+```
+
+`.env` (segredos — ver `.env.example`): `WHATSAPP_ACCESS_TOKEN`,
+`WHATSAPP_VERIFY_TOKEN`, `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`,
+`MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`.
+
+## Provedores
+
+### WhatsApp
+- **fake** — desenvolvimento/testes (guarda mensagens em memória).
+- **cloud** — WhatsApp Business Cloud API oficial (Meta). Decisão de produto:
+  não usamos bibliotecas não oficiais (risco de banimento do número).
+  Setup: https://developers.facebook.com → app → WhatsApp → API Setup.
+  Webhook: `GET/POST /webhook/whatsapp` (o GET é o handshake `hub.challenge`).
+
+### PSP (pagamento)
+- **fake** — desenvolvimento/testes; webhook autenticado pelo header
+  `x-fake-token`.
+- **asaas** (beta) — QR estático com valor via `/v3/pix/qrCodes/static`;
+  webhook `PAYMENT_RECEIVED` autenticado pelo header `asaas-access-token`,
+  que deve ser igual ao `ASAAS_WEBHOOK_TOKEN`.
+- **mercadopago** (beta) — pagamento Pix via `/v1/payments`; o webhook só
+  traz o id, então o adaptador **consulta a API** para confirmar status
+  `approved` (nunca confia no corpo do webhook); assinatura HMAC do header
+  `x-signature` validada com `MP_WEBHOOK_SECRET`.
+
+> ⚠️ Os dois adaptadores reais foram escritos contra a documentação pública e
+> ainda **não foram validados contra o sandbox** (a sandbox desta sessão não
+> tem rede externa). Antes de produção: rodar o roteiro de validação no
+> sandbox do provedor.
+
+## Deploy
+
+```bash
+cp .env.example .env   # preencha os tokens
+# edite config.yaml (seller_numbers, provedores)
 docker compose up -d --build
 ```
 
-Isso sobe **dois serviços**:
-- `agent` — o robô que analisa e opera, reiniciando sozinho se cair;
-- `dashboard` — a interface web em **http://localhost:8000**.
+O banco (`pixzap.db`) fica no volume `pixzap-data`. O serviço expõe a porta
+8000; coloque um proxy com HTTPS na frente (Meta e PSPs exigem webhook HTTPS).
 
-Comandos úteis:
+## Endpoints
 
-```bash
-docker compose logs -f agent        # acompanhar o agente ao vivo
-docker compose exec agent python -m phebos.main evaluate   # relatório demo
-docker compose exec agent touch /app/data/KILL   # KILL SWITCH (pausa ordens)
-docker compose exec agent rm /app/data/KILL      # retoma
-docker compose restart agent        # aplicar mudanças do config.yaml
-docker compose down                 # parar tudo (dados ficam no volume)
-```
-
-O banco (`phebos.db`) e o kill switch vivem no volume `phebos-data` — derrubar
-e subir os containers **não apaga o histórico**.
-
-## 3. Rodando sem Docker (local)
-
-```bash
-pip install -e .
-cp .env.example .env                 # preencha as chaves
-python -m phebos.main once           # 1 ciclo de teste
-python -m phebos.main run            # loop contínuo
-python -m phebos.main dashboard      # dashboard em http://localhost:8000 (outro terminal)
-python -m phebos.main evaluate       # relatório do período demo
-```
-
----
-
-## 4. O dashboard
-
-Abra **http://localhost:8000**. Ele mostra:
-
-- **Cartões**: patrimônio, retorno do período, **alfa vs buy-and-hold**,
-  **P&L realizado**, **taxa de acerto**, **fator de lucro**, drawdown,
-  trades executados, ordens vetadas, dias rodando.
-- **Gráfico** da evolução do patrimônio (uma linha por mercado).
-- **Critérios demo → real** com checkmarks de progresso.
-- **Posições abertas**: valor, preço médio, P&L ao vivo e a **tese** que
-  motivou cada compra.
-- **Posições encerradas**: P&L realizado de cada saída e o motivo
-  (🛑 stop-loss, 🎯 take-profit, 📉 trailing, 🧠 decisão da IA).
-- **Operações**: cada compra/venda com valor, status (executada/vetada) e a
-  justificativa da IA — ou o motivo do veto do motor de risco.
-- **Decisões da IA**: a leitura de mercado de cada ciclo.
-- **Briefings de notícias**: o relatório completo do pesquisador a cada ciclo
-  (clique para expandir).
-
-- **Calibração de confiança**: acerto real por convicção declarada pela IA.
-- **Lições aprendidas**: a auto-reflexão mais recente do agente.
-- **Aba "Histórico do bot"**: linha do tempo completa — 🔎 leituras de mercado,
-  🧠 pensamentos, 💱 operações, 🏁 resultados e 📚 reflexões, com filtros.
-- **Aba "Logs ao vivo"**: terminal com os logs do agente (filtros por
-  Info/Avisos/Erros), atualizado a cada 10s — sem precisar de SSH.
-- **Aba "Conexões"**: defina as chaves de API pelo navegador e clique em
-  "Testar conexões" — 1 chamada barata por serviço confirma se cada chave
-  funciona (o teste do Telegram envia uma mensagem real). As chaves vão para
-  `secrets.env` (permissão 600, prioridade sobre o `.env`) e o **agente
-  recarrega sozinho no próximo ciclo**, sem reiniciar container. A tela nunca
-  mostra a chave completa (só prévia mascarada) e chaves de dinheiro REAL não
-  podem ser definidas por ali — apenas via `.env`, por segurança.
-- **Barra de controle** (topo da Visão geral): botão **"▶ Rodar ciclo agora"**
-  dispara um ciclo na hora, sem esperar o intervalo; e o campo **"Cadência do
-  ciclo"** ajusta o intervalo (em minutos) — o agente aplica no próximo passo,
-  sem reiniciar. O intervalo vale a partir da próxima espera; intervalos curtos
-  (< 5 min) consomem mais cota da API.
-
-Visual em branco/preto/dourado. Atualiza sozinho a cada 60 segundos.
-A porta muda com `PHEBOS_DASHBOARD_PORT`.
-
-> 🔒 O dashboard não tem login. Na sua máquina, tudo bem. Num servidor,
-> não exponha a porta 8000 ao mundo: acesse via túnel SSH
-> (`ssh -L 8000:localhost:8000 usuario@servidor`) ou coloque atrás de um
-> proxy com senha. No `docker-compose.yml`, troque `"8000:8000"` por
-> `"127.0.0.1:8000:8000"` para garantir acesso só local.
-
----
-
-## 5. Onde hospedar (do mais barato ao mais caro)
-
-O agente precisa rodar 24/7, então plataformas serverless não servem bem.
-Opções na prática:
-
-| Opção | Custo/mês | Observações |
-|---|---|---|
-| **Seu próprio PC/notebook ligado** | R$ ~0 | Ótimo para o período demo. Use Docker; se desligar, perde ciclos (sem prejuízo: o robô só perde oportunidades). |
-| **Oracle Cloud Always Free** ⭐ | **R$ 0** | VM ARM grátis para sempre (até 4 vCPU/24 GB). Melhor custo-benefício, exige cartão no cadastro. |
-| **VPS barata (Hetzner, Contabo, DigitalOcean)** | US$ 4–6 | Simples e confiável. Hetzner CX22 (~€4) sobra para o Phebos. |
-| **Fly.io / Railway** | US$ ~5 | Deploy fácil via Dockerfile, mas o modelo de cobrança flutua com uso. |
-
-**Receita para qualquer VPS Ubuntu:**
-
-```bash
-# no servidor
-curl -fsSL https://get.docker.com | sh
-git clone <repositório> && cd Phebos
-cp .env.example .env && nano .env          # preencha as chaves
-docker compose up -d --build
-# dashboard via túnel SSH a partir do seu PC:
-ssh -L 8000:localhost:8000 usuario@ip-do-servidor
-```
-
-**Custos de API para operar** (independente da hospedagem):
-- Gemini 2.5 Flash: centavos de dólar/dia nesse volume de chamadas.
-- Grounding com Busca Google: cobrado por consulta no plano pago
-  (há cota gratuita diária no nível free) — preços em https://ai.google.dev/pricing.
-  Para zerar: `analyst.web_search: false` no `config.yaml` (decide só com RSS + indicadores).
-- Binance testnet, Alpaca paper e Telegram: grátis.
-
----
-
-## 6. Configuração (`config.yaml`)
-
-| Chave | O que faz |
+| Método/rota | Função |
 |---|---|
-| `mode` | `demo` (fictício) ou `live` (real — exige confirmação, ver §7) |
-| `interval_minutes` | Intervalo entre ciclos de análise |
-| `markets.crypto.symbols` | Pares da Binance (ex.: `BTCUSDT`) |
-| `markets.stocks.symbols` | Tickers da Alpaca (ex.: `AAPL`; `PBR` = Petrobras ADR) |
-| `risk.max_pct_per_trade` | % máximo do patrimônio por ordem |
-| `risk.max_open_positions` | Posições abertas simultâneas por mercado |
-| `risk.max_daily_loss_pct` | Perda diária que congela novas ordens até o dia seguinte |
-| `risk.stop_loss_pct` | Venda automática se a posição cair X% do preço médio (padrão 8) |
-| `risk.take_profit_pct` | Venda automática se a posição subir X% do preço médio (padrão 15) |
-| `risk.trailing_stop_pct` | Venda se cair X% abaixo do pico desde a entrada (0 = desligado) |
-| `risk.event_dedup_days` | Janela em que o mesmo evento de notícia não é re-operado (padrão 3) |
-| `risk.vol_target_atr_pct` | ATR de referência do sizing: ativo mais volátil → posição menor (padrão 4) |
-| `risk.loss_streak_threshold` | Perdas seguidas que ativam o anti-tilt (padrão 3) |
-| `risk.loss_streak_factor` | Fator de corte do sizing durante o tilt (padrão 0.5) |
-| `sentiment.enabled` | Liga/desliga Reddit + StockTwits + Fear & Greed |
-| `sentiment.reddit_subs` | Subreddits monitorados por mercado |
-| `calendar.enabled` | Liga/desliga o calendário econômico (1 busca/dia, cacheada) |
-| `reflection.every_days` | Frequência da auto-reflexão (padrão 7 dias) |
-| `demo.*` | Critérios do período demo (dias, trades, retorno, drawdown) |
-| `demo.must_beat_benchmark` | Exige retorno ≥ buy-and-hold dos símbolos para aprovar o demo |
-| `news.rss_feeds` | Feeds RSS por mercado |
-| `analyst.model` | `gemini-2.5-flash` (barato) ou `gemini-2.5-pro` (mais capaz) |
-| `analyst.web_search` | Pesquisa ativa com Busca Google (true/false) |
-| `analyst.extra_instructions` | Instrução extra sua para o analista (estilo, viés) |
-| `notifications.telegram` | Liga/desliga avisos no Telegram |
+| `GET /health` | status + versão |
+| `GET /webhook/whatsapp` | handshake de verificação da Meta |
+| `POST /webhook/whatsapp` | mensagens recebidas → comandos do bot |
+| `POST /webhook/psp` | eventos de pagamento → conciliação |
 
-Depois de editar, reinicie: `docker compose restart` (ou Ctrl+C e rodar de novo).
-
----
-
-## 7. Do demo ao dinheiro real
-
-1. Deixe rodar em demo pelo período configurado (padrão: 30 dias, 20+ trades).
-2. Acompanhe pelo dashboard ou rode `evaluate` — os critérios aparecem com ✅.
-3. Quando decidir promover (mesmo sem os critérios, a decisão é sua):
-   - `mode: live` no `config.yaml`;
-   - chaves reais `BINANCE_LIVE_*` / `ALPACA_LIVE_*` no `.env`;
-   - `PHEBOS_CONFIRM_LIVE=EU_ACEITO_O_RISCO` no `.env`.
-4. Reinicie. Sem a variável de confirmação o sistema **recusa** iniciar em live.
-
-💡 Comece o modo real com pouco capital e limites de risco apertados.
-
-## 8. Kill switch (botão de pânico)
-
-- **Local**: `touch KILL` na raiz do projeto → nenhuma ordem nova é enviada
-  (o agente continua observando). `rm KILL` retoma.
-- **Docker**: `docker compose exec agent touch /app/data/KILL` / `rm /app/data/KILL`.
-
-> ⚠️ O kill switch bloqueia **todas** as ordens — inclusive os stop-loss
-> automáticos. Se ativá-lo com posições abertas, elas ficam desprotegidas:
-> avalie fechá-las manualmente na corretora.
-
-## 8.1 Como funciona a disciplina de saída
-
-A cada ciclo, ANTES de consultar a IA, o motor de risco verifica cada posição
-aberta contra o preço atual:
-
-1. caiu `stop_loss_pct`% abaixo do preço médio → **vende tudo** (🛑);
-2. subiu `take_profit_pct`% acima do preço médio → **vende tudo** (🎯);
-3. (opcional) caiu `trailing_stop_pct`% abaixo do **pico** desde a entrada → vende (📉).
-
-Essas vendas não passam pela IA nem pelo congelamento de perda diária —
-reduzir risco é sempre permitido. Cada saída realiza o P&L (registrado na
-tabela `realized` e no dashboard) e avisa no Telegram.
-
-A IA é instruída a vender quando a **tese** da posição enfraquecer — as
-proteções mecânicas cuidam do resto.
-
-## 8.2 Rodando os testes
-
-A suíte cobre indicadores, motor de risco (sizing, vetos, saídas, anti-tilt),
-contabilidade de posições, dedupe, reflexão, calendário, sentimento, brokers
-(com APIs simuladas), dashboard e o fluxo completo do agente:
+## Testes
 
 ```bash
-pip install pytest
-python -m pytest tests/ -q
+python -m py_compile src/pixzap/**/*.py   # sanidade de sintaxe
+python -m pytest tests                     # suíte completa (fakes, sem rede)
 ```
 
-## 9. Solução de problemas
+Cobertura dos testes: parsing de valores pt-BR, conciliação (confirmação,
+idempotência, valor divergente, Pix órfão, cobrança cancelada), comandos do
+bot (incluindo allowlist) e fluxo end-to-end pelo servidor (incluindo
+rejeição de webhook não autenticado).
 
-| Sintoma | Causa provável / solução |
-|---|---|
-| `Credenciais ... ausentes no .env` | Preencha as chaves do mercado habilitado, ou desabilite o mercado no `config.yaml`. |
-| `Modo LIVE bloqueado` | Falta `PHEBOS_CONFIRM_LIVE=EU_ACEITO_O_RISCO` no ambiente. |
-| `feed RSS indisponível (...)` | Feed fora do ar ou rede bloqueada — o ciclo continua sem ele. |
-| Dashboard vazio | O agente ainda não rodou nenhum ciclo (`once`/`run`), ou os serviços não compartilham o mesmo volume/banco. |
-| `No such file or directory: '.../config.yaml'` | O pacote instalado não achava o config. Corrigido nesta versão (busca em PHEBOS_CONFIG/cwd/repo). Atualize: `git pull && docker compose up -d --build`. |
-| Nenhum log e nenhuma request de API | Chave do Gemini ausente/errada na inicialização. Desde esta versão o agente não morre mais: ele loga o erro na aba **Logs** e tenta de novo a cada 30s — salve a chave correta na aba **Conexões** que ele se recupera sozinho. Em versões antigas, atualize: `git pull && docker compose up -d --build`. |
-| Erro 401/403 da Binance/Alpaca | Chave errada para o modo: testnet ≠ live; paper ≠ live. |
-| Telegram mudo | Token/chat_id errados, ou você não mandou a 1ª mensagem para o bot. |
-| Mercado de ações "fechado" | Normal: NYSE opera ~9h30–16h de NY em dias úteis. Cripto segue 24/7. |
+## Roadmap curto
 
-## 10. Mapa do código
+- [ ] Validar adaptadores Asaas e Mercado Pago no sandbox real.
+- [ ] Expiração automática de cobranças antigas (lembrete ao cliente).
+- [ ] Multi-vendedor com onboarding self-service (hoje: 1 instância = 1 loja).
+- [ ] Página/relatório semanal de recebimentos (CSV já sai do SQLite).
 
-```
-src/phebos/
-├── main.py          # CLI: run | once | evaluate | dashboard
-├── config.py        # config.yaml + .env + trava do modo live
-├── schemas.py       # modelos Pydantic (decisão, ordens, snapshot)
-├── news.py          # manchetes RSS/Atom (parser próprio)
-├── indicators.py    # RSI, SMA, preço vs. média, tendência de volume
-├── analyst.py       # Gemini: pesquisa (Busca Google) → decisão estruturada
-├── notify.py        # Telegram (início, trades, vetos, erros)
-├── risk.py          # motor de risco determinístico + kill switch
-├── journal.py       # SQLite: decisões, trades, briefings, patrimônio
-├── evaluation.py    # métricas do demo e critérios de promoção
-├── dashboard.py     # API FastAPI + página web (web/index.html)
-└── brokers/         # binance.py (testnet/real) e alpaca.py (paper/real)
-```
+## Legado
+
+Este repositório abrigava o **Phebos**, um bot de trading autônomo. O código
+foi removido em jul/2026 (o dono tem backup e o histórico segue no git —
+`git log` antes do commit "nasce o PixZap").

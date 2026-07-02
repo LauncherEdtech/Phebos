@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # ╔══════════════════════════════════════════════════════════════════╗
-# ║  Phebos — Instalador automático                                  ║
+# ║  PixZap — Instalador automático                                  ║
 # ║  Instala Docker, clona o repositório, configura as chaves e      ║
-# ║  sobe o agente + dashboard. Pode ser executado mais de uma vez.  ║
+# ║  sobe o serviço. Pode ser executado mais de uma vez.             ║
 # ║                                                                  ║
 # ║  Uso:  curl -fsSL https://raw.githubusercontent.com/LauncherEdtech/Phebos/main/setup.sh | bash
 # ╚══════════════════════════════════════════════════════════════════╝
 set -euo pipefail
 
 REPO_URL="https://github.com/LauncherEdtech/Phebos.git"
-INSTALL_DIR="${PHEBOS_DIR:-$HOME/Phebos}"
+INSTALL_DIR="${PIXZAP_DIR:-$HOME/PixZap}"
 
 # cores
 G='\033[0;32m'; Y='\033[1;33m'; R='\033[0;31m'; B='\033[1;34m'; N='\033[0m'
@@ -32,7 +32,7 @@ ask() { # ask "pergunta" VAR [secreto]
 
 echo
 echo -e "${B}╔════════════════════════════════════════╗${N}"
-echo -e "${B}║   ✦ Phebos — Instalador automático     ║${N}"
+echo -e "${B}║   💸 PixZap — Instalador automático     ║${N}"
 echo -e "${B}╚════════════════════════════════════════╝${N}"
 echo
 
@@ -74,117 +74,50 @@ if [ -d "$INSTALL_DIR/.git" ]; then
   say "Repositório já existe em $INSTALL_DIR — atualizando..."
   git -C "$INSTALL_DIR" pull --ff-only || warn "Não foi possível atualizar (alterações locais?); seguindo com a versão atual."
 else
-  say "Clonando o Phebos em $INSTALL_DIR..."
+  say "Clonando o PixZap em $INSTALL_DIR..."
   git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
 fi
 cd "$INSTALL_DIR"
-ok "Código pronto"
 
-# ── 4. chaves (.env) ─────────────────────────────────────────────────
+# ── 4. chaves ────────────────────────────────────────────────────────
 if [ -f .env ]; then
-  echo
-  warn "Já existe um arquivo .env configurado."
-  ask "Quer reconfigurar as chaves? (s/N)" RECONF
-  case "${RECONF,,}" in
-    s|sim|y|yes) CONFIGURE_ENV=1 ;;
-    *) CONFIGURE_ENV=0; ok "Mantendo o .env atual" ;;
-  esac
+  ok "Arquivo .env já existe — mantendo as chaves atuais."
 else
-  CONFIGURE_ENV=1
+  say "Configuração das chaves (deixe em branco para preencher depois no .env):"
+  ask "WHATSAPP_ACCESS_TOKEN (Meta → WhatsApp → API Setup)" WA_TOKEN secreto
+  ask "WHATSAPP_VERIFY_TOKEN (invente um segredo para o webhook)" WA_VERIFY
+  ask "ASAAS_API_KEY (sandbox: https://sandbox.asaas.com)" ASAAS_KEY secreto
+  ask "ASAAS_WEBHOOK_TOKEN (o mesmo valor configurado no painel do Asaas)" ASAAS_WH
+  cat > .env <<EOF
+WHATSAPP_ACCESS_TOKEN=${WA_TOKEN}
+WHATSAPP_VERIFY_TOKEN=${WA_VERIFY}
+ASAAS_API_KEY=${ASAAS_KEY}
+ASAAS_WEBHOOK_TOKEN=${ASAAS_WH}
+MP_ACCESS_TOKEN=
+MP_WEBHOOK_SECRET=
+EOF
+  ok "Arquivo .env criado."
 fi
 
-CRYPTO_ON=1; STOCKS_ON=1
-if [ "$CONFIGURE_ENV" = "1" ]; then
-  echo
-  echo -e "${B}── Configuração das chaves (modo DEMO: tudo gratuito) ──${N}"
-  echo "  Deixe em branco o que não tiver — o mercado correspondente será desativado."
-  echo
-
-  echo "1/4 · Gemini (obrigatória) — crie grátis em https://aistudio.google.com/apikey"
-  ask "GEMINI_API_KEY" GEMINI_KEY secreto
-  [ -n "$GEMINI_KEY" ] || die "A chave do Gemini é obrigatória — é o cérebro do agente."
-
-  echo
-  echo "2/4 · Binance TESTNET (cripto, dinheiro fictício) — https://testnet.binance.vision"
-  ask "BINANCE_TESTNET_API_KEY (Enter para pular)" BIN_KEY
-  BIN_SECRET=""
-  if [ -n "$BIN_KEY" ]; then ask "BINANCE_TESTNET_API_SECRET" BIN_SECRET secreto; else CRYPTO_ON=0; fi
-
-  echo
-  echo "3/4 · Alpaca PAPER (ações EUA, dinheiro fictício) — https://alpaca.markets"
-  ask "ALPACA_PAPER_API_KEY (Enter para pular)" ALP_KEY
-  ALP_SECRET=""
-  if [ -n "$ALP_KEY" ]; then ask "ALPACA_PAPER_API_SECRET" ALP_SECRET secreto; else STOCKS_ON=0; fi
-
-  [ "$CRYPTO_ON" = "1" ] || [ "$STOCKS_ON" = "1" ] || die "Configure ao menos um mercado (Binance testnet ou Alpaca paper)."
-
-  echo
-  echo "4/4 · Telegram (opcional — avisos de trades no celular)"
-  ask "TELEGRAM_BOT_TOKEN (Enter para pular)" TG_TOKEN
-  TG_CHAT=""
-  [ -n "$TG_TOKEN" ] && ask "TELEGRAM_CHAT_ID" TG_CHAT
-
-  cat > .env <<ENV
-GEMINI_API_KEY=$GEMINI_KEY
-TELEGRAM_BOT_TOKEN=$TG_TOKEN
-TELEGRAM_CHAT_ID=$TG_CHAT
-BINANCE_TESTNET_API_KEY=$BIN_KEY
-BINANCE_TESTNET_API_SECRET=$BIN_SECRET
-BINANCE_LIVE_API_KEY=
-BINANCE_LIVE_API_SECRET=
-ALPACA_PAPER_API_KEY=$ALP_KEY
-ALPACA_PAPER_API_SECRET=$ALP_SECRET
-ALPACA_LIVE_API_KEY=
-ALPACA_LIVE_API_SECRET=
-PHEBOS_CONFIRM_LIVE=
-ENV
-  chmod 600 .env
-  ok "Arquivo .env criado (permissão restrita ao seu usuário)"
-
-  # desativa no config.yaml os mercados sem chave
-  if [ "$CRYPTO_ON" = "0" ]; then
-    python3 - <<'PY' 2>/dev/null || sed -i '/^  crypto:/,/^  [a-z]/ s/enabled: true/enabled: false/' config.yaml
-import re, pathlib
-p = pathlib.Path("config.yaml"); t = p.read_text()
-t = re.sub(r"(crypto:\n\s*enabled:) true", r"\1 false", t)
-p.write_text(t)
-PY
-    warn "Mercado cripto desativado (sem chaves da Binance)."
-  fi
-  if [ "$STOCKS_ON" = "0" ]; then
-    python3 - <<'PY' 2>/dev/null || sed -i '/^  stocks:/,/^[a-z]/ s/enabled: true/enabled: false/' config.yaml
-import re, pathlib
-p = pathlib.Path("config.yaml"); t = p.read_text()
-t = re.sub(r"(stocks:\n\s*enabled:) true", r"\1 false", t)
-p.write_text(t)
-PY
-    warn "Mercado de ações desativado (sem chaves da Alpaca)."
+if ! grep -q '^seller_numbers: \[\]' config.yaml 2>/dev/null; then
+  ok "config.yaml já personalizado — mantendo."
+else
+  ask "Seu número de WhatsApp (formato 5511999998888)" SELLER
+  if [ -n "$SELLER" ]; then
+    sed -i "s/^seller_numbers: \[\]/seller_numbers: [\"$SELLER\"]/" config.yaml
+    ok "Número autorizado: $SELLER"
+  else
+    warn "Nenhum número configurado — edite seller_numbers no config.yaml."
   fi
 fi
 
-# ── 5. subir os serviços ─────────────────────────────────────────────
-echo
-say "Construindo e subindo os containers (pode levar alguns minutos na 1ª vez)..."
+# ── 5. sobe ──────────────────────────────────────────────────────────
+say "Subindo o PixZap..."
 $SUDO docker compose up -d --build
-
 echo
-say "Status dos serviços:"
-$SUDO docker compose ps
-
-echo
-echo -e "${G}╔══════════════════════════════════════════════════════════╗${N}"
-echo -e "${G}║                 ✦ Phebos instalado! ✦                    ║${N}"
-echo -e "${G}╚══════════════════════════════════════════════════════════╝${N}"
-echo
-echo -e "  📊 Dashboard:        ${B}http://localhost:8000${N}"
-echo -e "     (de outro PC:     ssh -L 8000:localhost:8000 $USER@IP-desta-máquina)"
-echo
-echo -e "  Comandos úteis (dentro de $INSTALL_DIR):"
-echo -e "    ${B}$SUDO docker compose logs -f agent${N}     → acompanhar o agente"
-echo -e "    ${B}$SUDO docker compose exec agent python -m phebos.main evaluate${N} → relatório demo"
-echo -e "    ${B}$SUDO docker compose exec agent touch /app/data/KILL${N}  → KILL SWITCH"
-echo -e "    ${B}$SUDO docker compose restart${N}           → aplicar mudanças do config.yaml"
-echo
-echo -e "  📖 Manual completo: GUIA.md no repositório"
-echo -e "  ${Y}Modo DEMO ativo — dinheiro fictício. Sem risco.${N}"
-echo
+ok "PixZap no ar! Health check: http://localhost:8000/health"
+echo -e "  ${B}Próximos passos:${N}"
+echo "  1. Aponte um domínio com HTTPS para esta máquina (Meta e PSPs exigem)."
+echo "  2. Configure o webhook do WhatsApp:  https://SEU_DOMINIO/webhook/whatsapp"
+echo "  3. Configure o webhook do PSP:       https://SEU_DOMINIO/webhook/psp"
+echo "  4. Manual completo: GUIA.md"

@@ -1,145 +1,73 @@
-# Phebos — Agente Autônomo de Trading com IA
+# PixZap — confirmação automática de Pix para quem vende pelo WhatsApp
 
-> 📖 **Manual completo de instalação, uso, dashboard e deploy: [GUIA.md](GUIA.md)**
+> 📖 **Manual completo de instalação, uso e deploy: [GUIA.md](GUIA.md)**
+> 📊 A análise de mercado que originou o produto: [docs/analise-mercado-dores-globais.md](docs/analise-mercado-dores-globais.md)
 
-Sistema autônomo que usa a **API do Gemini** (Google) para analisar o mercado
-e tomar decisões de compra/venda em dois mercados:
+**O problema:** quem vende pelo WhatsApp confere pagamento na mão — o cliente
+manda *screenshot* do comprovante e o vendedor precisa abrir o app do banco,
+achar a transferência e casar com o pedido. Além de lento, é a porta de
+entrada do **golpe do comprovante falso**.
 
-- **Cripto** via Binance (24/7) — com suporte à **testnet** (dinheiro fictício)
-- **Ações dos EUA** via Alpaca — com suporte a **paper trading** (dinheiro fictício)
+**A solução:** o PixZap gera a cobrança Pix dentro do chat e só dá o pedido
+como pago quando o dinheiro **realmente cai** (webhook autenticado do
+provedor de pagamento). Screenshot deixa de valer como comprovante.
 
-## ⚠️ Aviso importante
+## Como funciona
 
-Trading automatizado envolve **risco real de perda de capital**. Um modelo de IA
-analisando o mercado **não é garantia de lucro**. Este projeto:
+```
+Vendedor (WhatsApp): cobrar 150,00 João pedido 12
+PixZap:              ✅ Cobrança #12 criada. Encaminhe o copia-e-cola: 000201...
+   ... cliente paga o Pix ...
+PSP  → webhook autenticado → PixZap concilia (txid + valor exato, em centavos)
+PixZap (WhatsApp):   ✅ Pix de R$ 150,00 de Maria confirmado! Pode liberar. 🎉
+```
 
-- Nasce em **modo demo** (testnet/paper trading) por padrão.
-- Possui uma **camada de risco determinística** (em código, não decidida pela IA)
-  que limita tamanho de posição, perda diária e símbolos permitidos.
-- Só opera com dinheiro real após um **período de avaliação** e uma
-  **confirmação explícita** sua.
-
-Use por sua conta e risco. Nada aqui é recomendação de investimento.
+Comandos do vendedor: `cobrar <valor> [descrição]` · `pendentes` · `hoje` ·
+`cancelar <id>` · `ajuda`.
 
 ## Arquitetura
 
 ```
-Loop (a cada N minutos)
-  → coleta dados de mercado (candles, preços, posições, saldo)
-  → coleta manchetes de notícias via RSS (CoinDesk, Yahoo Finance, CNBC, ...)
-  → PESQUISA: Gemini com Busca Google investiga as notícias das últimas horas
-    (anúncios de governos, IPOs, descobertas, reação das redes sociais)
-    e produz um briefing de inteligência de mercado
-  → calcula indicadores técnicos (RSI, médias móveis, tendência de volume)
-  → DECISÃO: Gemini recebe snapshot + indicadores + briefing e retorna uma
-    decisão estruturada (JSON validado: ordens + justificativa), priorizando
-    notícias fortes ainda não precificadas — como um gestor humano faria
-  → motor de risco valida cada ordem (limites rígidos em código)
-  → executa as ordens aprovadas via API da corretora/exchange
-  → notifica cada trade no Telegram 📱
-  → registra tudo no journal (SQLite): briefings, decisões, trades, patrimônio
+src/pixzap/
+├── main.py         # ponto de entrada: monta dependências e sobe o servidor
+├── server.py       # FastAPI: webhooks do WhatsApp e do PSP
+├── bot.py          # comandos do vendedor no chat (pt-BR)
+├── matching.py     # motor de conciliação determinístico (regra de ouro)
+├── storage.py      # SQLite: cobranças e pagamentos
+├── models.py       # domínio (dinheiro sempre em centavos, int)
+├── config.py       # config.yaml + .env
+├── psp/            # provedores de pagamento: fake | asaas | mercadopago
+└── whatsapp/       # mensageria: fake | cloud (API oficial da Meta)
 ```
 
-```
-src/phebos/
-├── main.py          # ponto de entrada: loop do agente + comandos CLI
-├── config.py        # carrega config.yaml + variáveis de ambiente
-├── schemas.py       # modelos Pydantic (decisão da IA, ordens, snapshot)
-├── news.py          # manchetes via RSS/Atom (parser próprio, sem deps extras)
-├── indicators.py    # RSI, SMA, preço vs. média, tendência de volume
-├── analyst.py       # 2 etapas: pesquisa (Busca Google) → decisão estruturada
-├── notify.py        # notificações no Telegram (trades, vetos, erros)
-├── risk.py          # motor de risco determinístico + kill switch
-├── journal.py       # registro em SQLite (briefings, trades, patrimônio)
-├── evaluation.py    # avalia o período demo e diz se está apto ao modo real
-└── brokers/
-    ├── base.py      # interface comum de corretora
-    ├── binance.py   # Binance spot (testnet ou real)
-    └── alpaca.py    # Alpaca (paper ou real)
-```
+## Regras de segurança (nunca enfraquecer)
 
-### Inteligência de notícias
+1. **Pagamento só se confirma por webhook autenticado do PSP** — nunca por
+   mensagem, screenshot ou palpite. Webhook sem token/assinatura válida é
+   descartado com HTTP 401.
+2. **Conciliação exata ao centavo**: valor divergente NÃO quita a cobrança;
+   o vendedor é alertado.
+3. **Idempotência**: webhook repetido não gera confirmação nova.
+4. **Allowlist de vendedores**: só números configurados dão comandos ao bot.
 
-O agente reage a eventos do mundo real dentro do intervalo do ciclo
-(`interval_minutes`). Exemplos do que o pesquisador captura:
-
-- Governo anuncia compra de Bitcoin para reserva estratégica → tese de compra
-  antes da alta consolidar.
-- Empresa lança produto mal recebido pelo mercado/redes sociais → tese de venda.
-- Descoberta relevante (ex.: nova bacia de petróleo) → tese de compra na ação.
-
-> Custo/latência: o modelo padrão é o `gemini-2.5-flash` (muito barato) e a
-> pesquisa usa o grounding com a Busca Google da própria API do Gemini.
-> O sistema reage em minutos — rápido como um analista humano atento, mas não
-> compete com robôs de alta frequência que reagem em milissegundos.
-
-## Setup
-
-1. **Python 3.10+** e dependências:
-
-   ```bash
-   pip install -e .
-   ```
-
-2. **Chaves de API** — copie `.env.example` para `.env` e preencha:
-
-   - `GEMINI_API_KEY` — em https://aistudio.google.com/apikey
-   - Telegram (opcional): token do bot via @BotFather + seu chat_id
-   - Binance **testnet**: crie chaves em https://testnet.binance.vision (grátis)
-   - Alpaca **paper**: crie conta em https://alpaca.markets (paper trading é grátis)
-
-3. **Configuração** — ajuste `config.yaml` (símbolos, intervalo, limites de risco,
-   critérios do período demo).
-
-## Uso
+## Setup rápido (desenvolvimento)
 
 ```bash
-# Roda o agente (modo demo por padrão)
-python -m phebos.main run
-
-# Executa um único ciclo de análise (útil para testar)
-python -m phebos.main once
-
-# Relatório do período demo: retorno, drawdown, taxa de acerto
-# e veredito sobre os critérios de promoção ao modo real
-python -m phebos.main evaluate
-
-# Dashboard web com gráficos, operações e decisões (http://localhost:8000)
-python -m phebos.main dashboard
+pip install -e . && pip install pytest httpx
+cp .env.example .env
+python -m pytest tests          # tudo com fakes, sem rede externa
+python -m pixzap.main           # sobe em http://localhost:8000 (PSP/WhatsApp fakes)
 ```
 
-Ou com Docker (agente + dashboard juntos): `docker compose up -d --build`
+## Produção
 
-## Modo demo → modo real
+1. Preencha `config.yaml` (números autorizados, provedores) e `.env` (tokens).
+2. `docker compose up -d --build`
+3. Configure os webhooks:
+   - **Meta (WhatsApp)**: URL `https://seu-dominio/webhook/whatsapp` + o
+     `WHATSAPP_VERIFY_TOKEN` que você inventou.
+   - **PSP (Asaas/Mercado Pago)**: URL `https://seu-dominio/webhook/psp` + o
+     token/assinatura no painel do provedor.
 
-1. O agente roda em demo pelo período definido em `config.yaml`
-   (`demo.min_days`, padrão 30 dias).
-2. `python -m phebos.main evaluate` mostra as métricas e diz se os critérios
-   foram atingidos (retorno mínimo, drawdown máximo, nº mínimo de trades).
-3. Para ir ao modo real (a qualquer momento, a decisão é sua):
-   - mude `mode: live` no `config.yaml`;
-   - preencha as chaves **reais** (`BINANCE_LIVE_*`, `ALPACA_LIVE_*`) no `.env`;
-   - exporte `PHEBOS_CONFIRM_LIVE=EU_ACEITO_O_RISCO`.
-
-   Sem a variável de confirmação, o sistema **recusa** iniciar em modo real.
-
-## Notificações no Telegram
-
-Com `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` no `.env`, você recebe no celular:
-
-- 🤖 quando o agente inicia (modo, mercados, intervalo)
-- 🟢/🔴 cada compra/venda executada, com o valor e a justificativa da IA
-- 🚫 ordens vetadas pelo motor de risco (e o motivo)
-- ❗ erros no ciclo
-
-Para desativar: `notifications.telegram: false` no `config.yaml`.
-
-## Kill switch
-
-Crie um arquivo chamado `KILL` na raiz do projeto e o agente para de enviar
-ordens imediatamente no próximo ciclo (continua apenas observando).
-
-```bash
-touch KILL    # pausa as ordens
-rm KILL       # retoma
-```
+> Os adaptadores Asaas e Mercado Pago estão em **beta**: valide no sandbox do
+> provedor antes de usar com dinheiro real.
