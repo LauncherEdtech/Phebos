@@ -1,10 +1,9 @@
 [project]
-name = "phebos"
+name = "pixzap"
 version = "0.1.0"
-description = "Agente autônomo de trading com análise via API do Claude"
+description = "Confirmação e conciliação automática de Pix para quem vende pelo WhatsApp"
 requires-python = ">=3.10"
 dependencies = [
-    "google-genai>=1.0",
     "pydantic>=2.7",
     "python-dotenv>=1.0",
     "PyYAML>=6.0",
@@ -19,6 +18,3 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-data]
-phebos = ["web/*.html"]

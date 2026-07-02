@@ -1,78 +1,18 @@
-# Configuração do Phebos
-# "demo"  → Binance testnet + Alpaca paper trading (dinheiro fictício)
-# "live"  → dinheiro real (exige PHEBOS_CONFIRM_LIVE=EU_ACEITO_O_RISCO no ambiente)
-mode: demo
+# Configuração do PixZap (segredos ficam no .env, nunca aqui)
 
-# Intervalo entre ciclos de análise, em minutos
-interval_minutes: 15
+# Números de WhatsApp autorizados a dar comandos ao bot
+# (formato E.164 sem '+', ex.: 5511999998888)
+seller_numbers: []
 
-markets:
-  crypto:
-    enabled: true
-    symbols: [BTCUSDT, ETHUSDT, SOLUSDT]
-  stocks:
-    enabled: true
-    # Dica: PBR = ADR da Petrobras na NYSE; dá para operar empresas brasileiras assim
-    symbols: [AAPL, MSFT, NVDA, TSLA, SPY]
+timezone: America/Sao_Paulo
+port: 8000
 
-# Motor de risco — limites rígidos aplicados em código, fora do alcance da IA
-risk:
-  max_pct_per_trade: 5        # cada ordem ≤ 5% do patrimônio do mercado
-  max_open_positions: 6       # nº máximo de posições abertas por mercado
-  max_daily_loss_pct: 3       # perda diária ≥ 3% → para de operar até o dia seguinte
-  min_order_notional_usd: 10  # ignora ordens menores que isso
-  stop_loss_pct: 8            # venda automática se a posição cair 8% do preço médio
-  take_profit_pct: 15         # venda automática se a posição subir 15% do preço médio
-  trailing_stop_pct: 0        # venda se cair X% abaixo do PICO desde a entrada (0 = desligado)
-  event_dedup_days: 3         # o mesmo evento de notícia não é operado de novo por 3 dias
-  vol_target_atr_pct: 4       # ATR de referência: ativo mais volátil → posição menor
+whatsapp:
+  provider: fake        # fake (dev) | cloud (WhatsApp Business Cloud API oficial)
+  phone_number_id: ""   # ID do número no painel da Meta (provider: cloud)
 
-# Período de avaliação do modo demo e critérios para liberar o modo real
-demo:
-  min_days: 30                # tempo mínimo rodando em demo
-  min_trades: 20              # nº mínimo de trades executados
-  min_return_pct: 2           # retorno total mínimo no período
-  max_drawdown_pct: 10        # drawdown máximo tolerado no período
-  must_beat_benchmark: true   # exigir retorno ≥ buy-and-hold dos próprios símbolos
-
-# Inteligência de notícias
-news:
-  max_headlines_per_feed: 8
-  rss_feeds:
-    crypto:
-      - https://www.coindesk.com/arc/outboundfeeds/rss/
-      - https://cointelegraph.com/rss
-      - https://decrypt.co/feed
-    stocks:
-      - https://finance.yahoo.com/news/rssindex
-      - https://www.cnbc.com/id/100003114/device/rss/rss.html
-      - https://feeds.content.dowjones.io/public/rss/mw_topstories
-
-analyst:
-  # Modelos Gemini: gemini-2.5-flash (rápido e barato, recomendado)
-  # ou gemini-2.5-pro (mais capaz, mais caro)
-  model: gemini-2.5-flash
-  # Pesquisa ativa com a Busca Google antes de cada decisão
-  web_search: true
-  # Instrução extra opcional anexada ao prompt do analista (estilo, viés, etc.)
-  extra_instructions: ""
-
-notifications:
-  # Avisos no Telegram (trades executados, ordens vetadas, erros).
-  # Requer TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID no .env
-  telegram: true
-
-# Sentimento social (Reddit, StockTwits, Fear & Greed) — gratuito, sem chaves
-sentiment:
-  enabled: true
-  reddit_subs:
-    crypto: [CryptoCurrency, Bitcoin]
-    stocks: [stocks, wallstreetbets]
-
-# Calendário econômico (Fed, CPI, payroll, earnings) — 1 busca por dia, cacheada
-calendar:
-  enabled: true
-
-# Auto-reflexão: o agente revisa os próprios trades e gera lições para o prompt
-reflection:
-  every_days: 7
+psp:
+  provider: fake        # fake (dev) | asaas | mercadopago
+  asaas_sandbox: true
+  asaas_pix_key: ""     # chave Pix cadastrada no Asaas (QR estático)
+  mp_payer_email: ""    # e-mail placeholder exigido pela API Pix do Mercado Pago

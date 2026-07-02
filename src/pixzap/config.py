@@ -1,0 +1,84 @@
+"""Carrega config.yaml + .env do PixZap.
+
+Segredos (tokens de API) vêm SEMPRE de variáveis de ambiente — nunca do
+YAML — para não vazarem em commit.
+"""
+
+import os
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import List
+
+import yaml
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parents[2]
+# Em Docker, PIXZAP_DATA_DIR=/app/data persiste o banco num volume
+DATA_DIR = Path(os.environ.get("PIXZAP_DATA_DIR", str(ROOT)))
+DB_PATH = DATA_DIR / "pixzap.db"
+
+
+@dataclass
+class WhatsAppConfig:
+    provider: str = "fake"            # fake | cloud
+    phone_number_id: str = ""         # ID do número na Cloud API (Meta)
+    access_token: str = ""            # env: WHATSAPP_ACCESS_TOKEN
+    verify_token: str = ""            # env: WHATSAPP_VERIFY_TOKEN (handshake do webhook)
+
+
+@dataclass
+class PspConfig:
+    provider: str = "fake"            # fake | asaas | mercadopago
+    asaas_api_key: str = ""           # env: ASAAS_API_KEY
+    asaas_webhook_token: str = ""     # env: ASAAS_WEBHOOK_TOKEN (valida origem do webhook)
+    asaas_sandbox: bool = True
+    asaas_pix_key: str = ""           # chave Pix cadastrada no Asaas (QR estático)
+    mp_access_token: str = ""         # env: MP_ACCESS_TOKEN
+    mp_webhook_secret: str = ""       # env: MP_WEBHOOK_SECRET (assinatura x-signature)
+    mp_payer_email: str = ""          # e-mail placeholder exigido pela API Pix do MP
+    fake_webhook_token: str = "teste" # token do PSP fake (dev/testes)
+
+
+@dataclass
+class PixzapConfig:
+    # Números de WhatsApp autorizados a dar comandos ao bot (formato E.164
+    # sem '+', ex.: 5511999998888). Mensagens de qualquer outro número são
+    # ignoradas — regra de segurança, nunca enfraquecer.
+    seller_numbers: List[str] = field(default_factory=list)
+    timezone: str = "America/Sao_Paulo"
+    port: int = 8000
+    whatsapp: WhatsAppConfig = field(default_factory=WhatsAppConfig)
+    psp: PspConfig = field(default_factory=PspConfig)
+
+
+def load_config(path: str | None = None) -> PixzapConfig:
+    load_dotenv(ROOT / ".env")
+    config_path = Path(path or os.environ.get("PIXZAP_CONFIG", ROOT / "config.yaml"))
+    raw: dict = {}
+    if config_path.exists():
+        raw = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+
+    wa_raw = raw.get("whatsapp", {})
+    psp_raw = raw.get("psp", {})
+    cfg = PixzapConfig(
+        seller_numbers=[str(n) for n in raw.get("seller_numbers", [])],
+        timezone=raw.get("timezone", "America/Sao_Paulo"),
+        port=int(raw.get("port", 8000)),
+        whatsapp=WhatsAppConfig(
+            provider=wa_raw.get("provider", "fake"),
+            phone_number_id=str(wa_raw.get("phone_number_id", "")),
+            access_token=os.environ.get("WHATSAPP_ACCESS_TOKEN", ""),
+            verify_token=os.environ.get("WHATSAPP_VERIFY_TOKEN", ""),
+        ),
+        psp=PspConfig(
+            provider=psp_raw.get("provider", "fake"),
+            asaas_api_key=os.environ.get("ASAAS_API_KEY", ""),
+            asaas_webhook_token=os.environ.get("ASAAS_WEBHOOK_TOKEN", ""),
+            asaas_sandbox=bool(psp_raw.get("asaas_sandbox", True)),
+            asaas_pix_key=str(psp_raw.get("asaas_pix_key", "")),
+            mp_access_token=os.environ.get("MP_ACCESS_TOKEN", ""),
+            mp_webhook_secret=os.environ.get("MP_WEBHOOK_SECRET", ""),
+            mp_payer_email=str(psp_raw.get("mp_payer_email", "")),
+        ),
+    )
+    return cfg
