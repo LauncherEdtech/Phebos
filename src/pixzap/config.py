@@ -44,6 +44,14 @@ class PspConfig:
 
 
 @dataclass
+class AssistantConfig:
+    enabled: bool = False                 # assistente de IA (Gemini) no chat
+    model: str = "gemini-2.5-flash-lite"
+    financial_context: bool = True        # dados no contexto (exige opt-in do vendedor)
+    api_key: str = ""                     # env: GEMINI_API_KEY
+
+
+@dataclass
 class PixzapConfig:
     # Números de WhatsApp autorizados a dar comandos ao bot (formato E.164
     # sem '+', ex.: 5511999998888). Mensagens de qualquer outro número são
@@ -61,6 +69,7 @@ class PixzapConfig:
     dashboard_secret: str = ""        # env: PIXZAP_DASHBOARD_SECRET (ou gerado)
     whatsapp: WhatsAppConfig = field(default_factory=WhatsAppConfig)
     psp: PspConfig = field(default_factory=PspConfig)
+    assistant: AssistantConfig = field(default_factory=AssistantConfig)
 
 
 def _dashboard_secret() -> str:
@@ -87,6 +96,7 @@ def load_config(path: str | None = None) -> PixzapConfig:
 
     wa_raw = raw.get("whatsapp", {})
     psp_raw = raw.get("psp", {})
+    ai_raw = raw.get("assistant", {})
     cfg = PixzapConfig(
         seller_numbers=[str(n) for n in raw.get("seller_numbers", [])],
         timezone=raw.get("timezone", "America/Sao_Paulo"),
@@ -114,6 +124,12 @@ def load_config(path: str | None = None) -> PixzapConfig:
             mp_access_token=os.environ.get("MP_ACCESS_TOKEN", ""),
             mp_webhook_secret=os.environ.get("MP_WEBHOOK_SECRET", ""),
             mp_payer_email=str(psp_raw.get("mp_payer_email", "")),
+        ),
+        assistant=AssistantConfig(
+            enabled=bool(ai_raw.get("enabled", False)),
+            model=str(ai_raw.get("model", "gemini-2.5-flash-lite")),
+            financial_context=bool(ai_raw.get("financial_context", True)),
+            api_key=os.environ.get("GEMINI_API_KEY", ""),
         ),
     )
     return cfg

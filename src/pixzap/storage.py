@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS payments (
 -- estático chega com payment_ref DIFERENTE e vira 'pagamento_extra').
 CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_provider_ref
     ON payments (provider, payment_ref) WHERE payment_ref != '';
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS transfers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     amount_cents INTEGER NOT NULL,
@@ -163,6 +167,19 @@ class Storage:
                 " ORDER BY p.id DESC LIMIT ?", (limit,),
             ).fetchall()
         return [dict(r) for r in rows]
+
+    # ── configurações persistentes (ex.: consentimento do assistente) ─
+    def get_setting(self, key: str, default: str = "") -> str:
+        with self._connect() as conn:
+            row = conn.execute("SELECT value FROM settings WHERE key = ?",
+                               (key,)).fetchone()
+        return row["value"] if row else default
+
+    def set_setting(self, key: str, value: str) -> None:
+        with self._connect() as conn:
+            conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)"
+                         " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                         (key, value))
 
     # ── transferências (auditoria + limite diário) ──────────────────
     def record_transfer(self, amount_cents: int, pix_key: str, provider: str,

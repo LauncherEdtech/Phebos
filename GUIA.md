@@ -1,11 +1,10 @@
 # 📖 Guia completo do PixZap
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-07-03 (4ª edição) — simulação de 100 jornadas
-> (`docs/simulacao-100-jornadas.md`): PSP fora do ar responde erro amigável em
-> vez de silêncio, duplo toque no "cobrar" avisa sobre cobrança idêntica
-> pendente, mensagens multi-linha e com pontuação funcionam, sinônimos de
-> comandos (pendente/resumo/comandos), descrição limitada a 120 caracteres.
+> Última atualização: 2026-07-03 (5ª edição) — assistente de IA opcional
+> (Gemini 2.5 Flash-Lite): responde linguagem natural no chat, com acesso aos
+> dados financeiros somente após consentimento do vendedor ("assistente sim").
+> A IA nunca confirma pagamento nem executa ações.
 
 ## O que é
 
@@ -91,6 +90,28 @@ mercado (ver `docs/aderencia-mercados.md`):
    autorizado é ignorada sem resposta.
 5. **Dinheiro é sempre `int` em centavos** — nunca float.
 6. **Segredos só em variáveis de ambiente** (.env), nunca no config.yaml.
+
+## Assistente de IA (opcional)
+
+Com `assistant.enabled: true` no config.yaml e `GEMINI_API_KEY` no `.env`,
+mensagens que não são comandos deixam de responder "não entendi" e vão para
+o **auxiliar de IA** (Gemini 2.5 Flash-Lite), que tira dúvidas de uso,
+explica o golpe do comprovante e dá conselhos práticos de venda.
+
+Fronteiras (nunca enfraquecer, reforçadas no prompt em `assistant.py`):
+
+1. **A IA nunca confirma pagamento.** Se perguntarem "o Pix caiu?", ela
+   orienta a esperar a mensagem automática ✅ — que vem só do webhook.
+2. **A IA nunca executa ações** — ensina o comando exato; quem executa é o
+   código determinístico de sempre.
+3. **Dados financeiros só com consentimento**: o vendedor manda
+   *assistente sim* para liberar (persistido no banco) e *assistente não*
+   para revogar. Sem consentimento, a IA não vê nenhum número.
+4. Falha da IA nunca trava o bot: resposta amigável de erro e os comandos
+   continuam funcionando normalmente.
+
+Custo: o Flash-Lite custa centavos por milhares de perguntas (~US$ 0,10/M
+tokens de entrada); irrelevante perto do valor da assinatura.
 
 ## Vereditos da conciliação (o que cada webhook pode virar)
 

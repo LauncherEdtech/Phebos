@@ -22,6 +22,14 @@ whatsapp:
   template_name: pixzap_notificacao
   template_lang: pt_BR
 
+# Assistente de IA no chat (Gemini). A IA nunca confirma pagamento nem
+# executa ação; dados financeiros só entram no contexto se o vendedor
+# autorizar com "assistente sim" (revogável com "assistente não").
+assistant:
+  enabled: false
+  model: gemini-2.5-flash-lite
+  financial_context: true
+
 psp:
   provider: fake        # fake (dev) | asaas | mercadopago
   asaas_sandbox: true

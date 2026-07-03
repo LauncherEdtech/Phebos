@@ -27,10 +27,22 @@ def build() -> tuple:
     storage = Storage(DB_PATH)
     psp = build_psp(config.psp)
     wa_client = build_whatsapp(config.whatsapp)
+    assistant = None
+    if config.assistant.enabled:
+        if config.assistant.api_key:
+            from .assistant import GeminiAssistant
+            assistant = GeminiAssistant(config.assistant.api_key,
+                                        config.assistant.model)
+            log.info("Assistente de IA ativo (%s)", config.assistant.model)
+        else:
+            log.warning("assistant.enabled=true mas GEMINI_API_KEY vazia — "
+                        "assistente desativado.")
     bot = Bot(storage, psp, config.seller_numbers, config.timezone,
               lang=config.language, public_url=config.public_url,
               dashboard_secret=config.dashboard_secret,
-              transfer_daily_limit_cents=config.transfer_daily_limit * 100)
+              transfer_daily_limit_cents=config.transfer_daily_limit * 100,
+              assistant=assistant,
+              assistant_financial_context=config.assistant.financial_context)
     reconciler = Reconciler(storage, lang=config.language)
     app = create_app(bot, reconciler, psp, wa_client,
                      verify_token=config.whatsapp.verify_token,

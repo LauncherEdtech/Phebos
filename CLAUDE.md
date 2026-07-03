@@ -14,6 +14,9 @@
   - **allowlist** de vendedores (`seller_numbers`) para comandos do bot;
   - transferências pelo chat: **desativadas por padrão**, com código de
     confirmação obrigatório e **limite diário** (`transfer_daily_limit`);
+  - o assistente de IA (`assistant.py`) **nunca confirma pagamento nem
+    executa ações**, e só vê dados financeiros com consentimento do
+    vendedor (`assistente sim`/`assistente não`);
   - dinheiro sempre em **centavos (int)**; segredos só em variáveis de
     ambiente.
 - Toda mensagem ao usuário sai do catálogo `i18n.py` (pt/en/es/id) — nada

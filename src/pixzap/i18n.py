@@ -91,6 +91,17 @@ MESSAGES: dict[str, dict[str, str]] = {
                       "Tente de novo em instantes."),
         "charge_dup_warning": ("⚠️ Já existe uma cobrança IGUAL pendente: {summary}. "
                                "Se foi duplo toque, mande *cancelar {id}*."),
+        "assistant_consent_on": ("✅ Combinado! Agora posso ver seus números "
+                                 "(vendas, pendências, pagamentos) para te ajudar "
+                                 "melhor. Para retirar o acesso: *assistente não*."),
+        "assistant_consent_off": ("Ok, não olho mais seus números. Continuo "
+                                  "ajudando no que não depende deles. Para liberar "
+                                  "de novo: *assistente sim*."),
+        "assistant_error": ("Não consegui pensar agora. 🙃 Tente de novo em "
+                            "instantes ou mande *ajuda* para os comandos."),
+        "assistant_data_hint": ("💡 Posso responder ainda melhor olhando seus "
+                                "números (vendas, pendências). Se quiser, mande "
+                                "*assistente sim* — você retira quando quiser."),
         "status_pendente": "pendente",
         "status_pago": "pago",
         "status_cancelado": "cancelado",
@@ -172,6 +183,17 @@ MESSAGES: dict[str, dict[str, str]] = {
                       "Please try again in a moment."),
         "charge_dup_warning": ("⚠️ An IDENTICAL charge is already pending: {summary}. "
                                "If that was a double tap, send *cancelar {id}*."),
+        "assistant_consent_on": ("✅ Deal! I can now see your numbers (sales, "
+                                 "pending charges, payments) to help you better. "
+                                 "To revoke access: *assistente não*."),
+        "assistant_consent_off": ("Ok, I no longer look at your numbers. I'll keep "
+                                  "helping with everything else. To allow again: "
+                                  "*assistente sim*."),
+        "assistant_error": ("I couldn't think right now. 🙃 Try again in a moment "
+                            "or send *ajuda* for the commands."),
+        "assistant_data_hint": ("💡 I can answer even better by looking at your "
+                                "numbers (sales, pending charges). If you want that, "
+                                "send *assistente sim* — revocable anytime."),
         "status_pendente": "pending",
         "status_pago": "paid",
         "status_cancelado": "canceled",
@@ -251,6 +273,16 @@ MESSAGES: dict[str, dict[str, str]] = {
                       "Intenta de nuevo en un momento."),
         "charge_dup_warning": ("⚠️ Ya existe un cobro IDÉNTICO pendiente: {summary}. "
                                "Si fue un doble toque, envía *cancelar {id}*."),
+        "assistant_consent_on": ("✅ ¡Hecho! Ahora puedo ver tus números (ventas, "
+                                 "pendientes, pagos) para ayudarte mejor. Para "
+                                 "retirar el acceso: *assistente não*."),
+        "assistant_consent_off": ("Ok, ya no miro tus números. Sigo ayudando con "
+                                  "lo demás. Para permitir de nuevo: *assistente sim*."),
+        "assistant_error": ("No pude pensar ahora. 🙃 Intenta de nuevo en un "
+                            "momento o envía *ajuda* para los comandos."),
+        "assistant_data_hint": ("💡 Puedo responder aún mejor mirando tus números "
+                                "(ventas, pendientes). Si quieres, envía "
+                                "*assistente sim* — lo retiras cuando quieras."),
         "status_pendente": "pendiente",
         "status_pago": "pagado",
         "status_cancelado": "cancelado",
@@ -332,6 +364,17 @@ MESSAGES: dict[str, dict[str, str]] = {
                       "Coba lagi sebentar lagi."),
         "charge_dup_warning": ("⚠️ Sudah ada tagihan yang SAMA PERSIS tertunda: {summary}. "
                                "Kalau itu ketukan ganda, kirim *cancelar {id}*."),
+        "assistant_consent_on": ("✅ Siap! Sekarang saya bisa melihat angka Anda "
+                                 "(penjualan, tagihan tertunda, pembayaran) untuk "
+                                 "membantu lebih baik. Untuk mencabut: *assistente não*."),
+        "assistant_consent_off": ("Ok, saya tidak melihat angka Anda lagi. Saya tetap "
+                                  "membantu untuk hal lain. Untuk mengizinkan lagi: "
+                                  "*assistente sim*."),
+        "assistant_error": ("Saya tidak bisa berpikir sekarang. 🙃 Coba lagi sebentar "
+                            "lagi atau kirim *ajuda* untuk perintah."),
+        "assistant_data_hint": ("💡 Saya bisa menjawab lebih baik dengan melihat angka "
+                                "Anda (penjualan, tagihan). Jika mau, kirim "
+                                "*assistente sim* — bisa dicabut kapan saja."),
         "status_pendente": "tertunda",
         "status_pago": "lunas",
         "status_cancelado": "dibatalkan",

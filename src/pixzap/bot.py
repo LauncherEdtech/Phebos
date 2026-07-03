@@ -46,7 +46,8 @@ class Bot:
                  seller_numbers: list[str], tz_name: str = "America/Sao_Paulo",
                  lang: str = DEFAULT_LANG, public_url: str = "",
                  dashboard_secret: str = "",
-                 transfer_daily_limit_cents: int = 0):
+                 transfer_daily_limit_cents: int = 0,
+                 assistant=None, assistant_financial_context: bool = True):
         self.storage = storage
         self.psp = psp
         self.seller_numbers = set(seller_numbers)
@@ -58,6 +59,10 @@ class Bot:
         self.transfer_daily_limit_cents = transfer_daily_limit_cents
         # transferências aguardando código: sender → (code, amount, key, expira_em)
         self._pending_transfers: dict[str, tuple[str, int, str, float]] = {}
+        # Assistente de IA (opcional): responde linguagem natural; dados
+        # financeiros só entram com consentimento persistido do vendedor.
+        self.assistant = assistant
+        self.assistant_financial_context = assistant_financial_context
 
     def handle(self, sender: str, text: str) -> Optional[str]:
         """Processa uma mensagem e devolve a resposta (None = ignorar)."""
@@ -102,6 +107,16 @@ class Bot:
         if match:
             return self._cancel(int(match.group("id")))
 
+        # Consentimento do assistente de IA sobre os dados financeiros
+        if lowered in ("assistente sim", "assistant yes", "asistente sí",
+                       "asistente si", "asisten ya"):
+            self.storage.set_setting(f"assistant_consent:{sender}", "sim")
+            return t(self.lang, "assistant_consent_on")
+        if lowered in ("assistente não", "assistente nao", "assistant no",
+                       "asistente no", "asisten tidak"):
+            self.storage.set_setting(f"assistant_consent:{sender}", "nao")
+            return t(self.lang, "assistant_consent_off")
+
         # Comando reconhecido mas malformado → ensina o uso certo em vez
         # do genérico "não entendi" (simulação de usuários mostrou que
         # "cobrar" sozinho é o erro mais comum de quem está começando).
@@ -114,7 +129,26 @@ class Bot:
         if lowered.startswith("cancelar"):
             return t(self.lang, "cancel_usage")
 
+        # Nada casou: linguagem natural vai para o auxiliar de IA (se
+        # configurado). A IA nunca executa nada — só orienta (assistant.py).
+        if self.assistant is not None:
+            return self._ask_assistant(sender, text)
+
         return t(self.lang, "unknown_command")
+
+    def _ask_assistant(self, sender: str, question: str) -> str:
+        from .assistant import financial_summary
+        consent = self.storage.get_setting(f"assistant_consent:{sender}")
+        context = ""
+        if consent == "sim" and self.assistant_financial_context:
+            context = financial_summary(self.storage, str(self.tz))
+        try:
+            reply = self.assistant.answer(question, self.lang, context)
+        except Exception:
+            return t(self.lang, "assistant_error")
+        if not consent:  # primeira conversa: explica como liberar os dados
+            reply += "\n\n" + t(self.lang, "assistant_data_hint")
+        return reply
 
     def non_text_reply(self, sender: str) -> Optional[str]:
         """Resposta educada a áudio/imagem/documento de um vendedor.
