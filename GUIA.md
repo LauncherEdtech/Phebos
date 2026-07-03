@@ -1,10 +1,10 @@
 # 📖 Guia completo do PixZap
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-07-03 — saldo e transferências pelo chat (com código
-> de confirmação e limite diário), idioma indonésio, moeda configurável por
-> mercado, correção do parser de valores (estilo 150.50), webhooks resilientes
-> e landing page reescrita em 4 idiomas.
+> Última atualização: 2026-07-03 (2ª edição) — pronto para a API oficial da
+> Meta: fallback automático para template utility quando a janela de 24h está
+> fechada (config `template_name`/`template_lang`) e guia de deploy na stack
+> mais barata (`docs/deploy-barato.md`: Oracle Always Free + Caddy + Meta).
 
 ## O que é
 
@@ -143,8 +143,17 @@ psp:
 - **fake** — desenvolvimento/testes (guarda mensagens em memória).
 - **cloud** — WhatsApp Business Cloud API oficial (Meta). Decisão de produto:
   não usamos bibliotecas não oficiais (risco de banimento do número).
-  Setup: https://developers.facebook.com → app → WhatsApp → API Setup.
+  Setup completo passo a passo em `docs/deploy-barato.md` (§5).
   Webhook: `GET/POST /webhook/whatsapp` (o GET é o handshake `hub.challenge`).
+
+  **Custos e janela de 24h:** respostas a mensagens do vendedor são
+  gratuitas dentro da janela de serviço de 24h (que renova a cada mensagem
+  dele). Se uma confirmação de pagamento chegar com a janela fechada, o
+  cliente envia automaticamente o **template utility** configurado
+  (`whatsapp.template_name`, corpo `{{1}}`, US$ 0,008/msg no Brasil) — o
+  template precisa estar aprovado no WhatsApp Manager. Sem template
+  configurado, a falha é logada e a mensagem se perde (por isso o padrão
+  vem preenchido: `pixzap_notificacao`).
 
 ### PSP (pagamento)
 - **fake** — desenvolvimento/testes; webhook autenticado pelo header

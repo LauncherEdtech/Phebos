@@ -24,6 +24,10 @@ class WhatsAppConfig:
     phone_number_id: str = ""         # ID do número na Cloud API (Meta)
     access_token: str = ""            # env: WHATSAPP_ACCESS_TOKEN
     verify_token: str = ""            # env: WHATSAPP_VERIFY_TOKEN (handshake do webhook)
+    # Template utility aprovado (corpo com {{1}}) usado quando a janela de
+    # 24h está fechada; vazio = sem fallback (mensagem é perdida e logada)
+    template_name: str = "pixzap_notificacao"
+    template_lang: str = "pt_BR"
 
 
 @dataclass
@@ -98,6 +102,8 @@ def load_config(path: str | None = None) -> PixzapConfig:
             phone_number_id=str(wa_raw.get("phone_number_id", "")),
             access_token=os.environ.get("WHATSAPP_ACCESS_TOKEN", ""),
             verify_token=os.environ.get("WHATSAPP_VERIFY_TOKEN", ""),
+            template_name=str(wa_raw.get("template_name", "pixzap_notificacao")),
+            template_lang=str(wa_raw.get("template_lang", "pt_BR")),
         ),
         psp=PspConfig(
             provider=psp_raw.get("provider", "fake"),

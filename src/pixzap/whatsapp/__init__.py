@@ -11,5 +11,7 @@ def build_whatsapp(config) -> WhatsAppClient:
     if config.provider == "cloud":
         from .cloud import CloudApiWhatsApp
         return CloudApiWhatsApp(phone_number_id=config.phone_number_id,
-                                access_token=config.access_token)
+                                access_token=config.access_token,
+                                template_name=config.template_name,
+                                template_lang=config.template_lang)
     raise ValueError(f"Provedor de WhatsApp desconhecido: {config.provider}")

@@ -17,6 +17,10 @@ transfer_daily_limit: 0
 whatsapp:
   provider: fake        # fake (dev) | cloud (WhatsApp Business Cloud API oficial)
   phone_number_id: ""   # ID do número no painel da Meta (provider: cloud)
+  # Template utility aprovado na Meta (corpo com {{1}}), usado quando a
+  # janela de 24h está fechada — ver GUIA.md → "API oficial da Meta"
+  template_name: pixzap_notificacao
+  template_lang: pt_BR
 
 psp:
   provider: fake        # fake (dev) | asaas | mercadopago
