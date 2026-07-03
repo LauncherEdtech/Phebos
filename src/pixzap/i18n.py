@@ -85,6 +85,12 @@ MESSAGES: dict[str, dict[str, str]] = {
         "non_text": ("Não consigo ler áudio, imagem ou documento. 🙈 E lembre-se: "
                      "print não é comprovante — quando o Pix cair de verdade, eu "
                      "aviso aqui sozinho. Mande *ajuda* para ver os comandos."),
+        "charge_error": ("❌ Não consegui gerar a cobrança agora (problema no "
+                         "provedor de pagamento). Tente de novo em instantes."),
+        "psp_error": ("❌ Não consegui falar com o provedor de pagamento agora. "
+                      "Tente de novo em instantes."),
+        "charge_dup_warning": ("⚠️ Já existe uma cobrança IGUAL pendente: {summary}. "
+                               "Se foi duplo toque, mande *cancelar {id}*."),
         "status_pendente": "pendente",
         "status_pago": "pago",
         "status_cancelado": "cancelado",
@@ -160,6 +166,12 @@ MESSAGES: dict[str, dict[str, str]] = {
         "non_text": ("I can't read audio, images or documents. 🙈 And remember: a "
                      "screenshot is not proof — when the money truly lands, I'll tell "
                      "you here myself. Send *ajuda* to see the commands."),
+        "charge_error": ("❌ I couldn't create the charge right now (payment "
+                         "provider issue). Please try again in a moment."),
+        "psp_error": ("❌ I couldn't reach the payment provider right now. "
+                      "Please try again in a moment."),
+        "charge_dup_warning": ("⚠️ An IDENTICAL charge is already pending: {summary}. "
+                               "If that was a double tap, send *cancelar {id}*."),
         "status_pendente": "pending",
         "status_pago": "paid",
         "status_cancelado": "canceled",
@@ -233,6 +245,12 @@ MESSAGES: dict[str, dict[str, str]] = {
         "non_text": ("No puedo leer audios, imágenes ni documentos. 🙈 Y recuerda: una "
                      "captura no es comprobante — cuando el dinero caiga de verdad, te "
                      "aviso yo mismo. Envía *ajuda* para ver los comandos."),
+        "charge_error": ("❌ No pude generar el cobro ahora (problema con el "
+                         "proveedor de pagos). Intenta de nuevo en un momento."),
+        "psp_error": ("❌ No pude comunicarme con el proveedor de pagos ahora. "
+                      "Intenta de nuevo en un momento."),
+        "charge_dup_warning": ("⚠️ Ya existe un cobro IDÉNTICO pendiente: {summary}. "
+                               "Si fue un doble toque, envía *cancelar {id}*."),
         "status_pendente": "pendiente",
         "status_pago": "pagado",
         "status_cancelado": "cancelado",
@@ -308,6 +326,12 @@ MESSAGES: dict[str, dict[str, str]] = {
         "non_text": ("Saya tidak bisa membaca audio, gambar, atau dokumen. 🙈 Ingat: "
                      "screenshot bukan bukti bayar — begitu uang benar-benar masuk, saya "
                      "sendiri yang mengabari. Kirim *ajuda* untuk melihat perintah."),
+        "charge_error": ("❌ Saya tidak bisa membuat tagihan sekarang (masalah di "
+                         "penyedia pembayaran). Coba lagi sebentar lagi."),
+        "psp_error": ("❌ Saya tidak bisa menghubungi penyedia pembayaran sekarang. "
+                      "Coba lagi sebentar lagi."),
+        "charge_dup_warning": ("⚠️ Sudah ada tagihan yang SAMA PERSIS tertunda: {summary}. "
+                               "Kalau itu ketukan ganda, kirim *cancelar {id}*."),
         "status_pendente": "tertunda",
         "status_pago": "lunas",
         "status_cancelado": "dibatalkan",

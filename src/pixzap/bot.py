@@ -24,15 +24,18 @@ CONFIRM_TTL_SECONDS = 300  # transferência pendente expira em 5 min
 
 # Captura qualquer token como valor; a validação de verdade é do parse_brl,
 # para que "cobrar abc" responda "valor inválido" em vez de "não entendi".
+# re.S: descrição pode vir em várias linhas (gente cola o pedido inteiro).
 COBRAR_RE = re.compile(
     r"^cobrar\s+(?P<valor>r\$\s*\S+|\S+)(?:\s+(?P<descricao>.+))?$",
-    re.IGNORECASE,
+    re.IGNORECASE | re.S,
 )
 CANCELAR_RE = re.compile(r"^cancelar\s+#?(?P<id>\d+)$", re.IGNORECASE)
 # aceita "transferir 200 pro pix: xxx", "transferir 200 para xxx",
 # "transferir 200,50 pix xxx" e "transferir 200 xxx"
 TRANSFERIR_RE = re.compile(r"^transferir\s+(?P<valor>r\$\s*\S+|\S+)\s+(?P<resto>.+)$",
-                           re.IGNORECASE)
+                           re.IGNORECASE | re.S)
+
+MAX_DESCRIPTION_LEN = 120  # descrição maior é cortada (mensagens legíveis)
 _KEY_FILLER_RE = re.compile(r"^(?:(?:pro|para|pra|to|a|al)\s+)?(?:pix\s*[: ]\s*|pix\s+)?",
                             re.IGNORECASE)
 CONFIRMAR_RE = re.compile(r"^confirmar\s+(?P<codigo>\d{6})$", re.IGNORECASE)
@@ -62,9 +65,11 @@ class Bot:
             return None  # regra de segurança: desconhecido não conversa com o bot
 
         text = text.strip()
-        lowered = text.lower()
+        # "ajuda!", "Pendentes." etc.: pontuação no fim não muda a intenção
+        lowered = text.lower().rstrip("!?.,;: ")
 
-        if lowered in ("ajuda", "help", "menu", "oi", "olá", "ola", "hola", "hi"):
+        if lowered in ("ajuda", "help", "menu", "oi", "olá", "ola", "hola",
+                       "hi", "hello", "comandos", "início", "inicio", "start"):
             return t(self.lang, "help")
 
         match = COBRAR_RE.match(text)
@@ -72,13 +77,13 @@ class Bot:
             return self._create_charge(match.group("valor"),
                                        (match.group("descricao") or "").strip())
 
-        if lowered == "pendentes":
+        if lowered in ("pendentes", "pendente", "pendencias", "pendências"):
             return self._list_pending()
 
-        if lowered == "hoje":
+        if lowered in ("hoje", "resumo", "vendas"):
             return self._daily_summary()
 
-        if lowered in ("painel", "panel", "dashboard"):
+        if lowered in ("painel", "panel", "dashboard", "métricas", "metricas"):
             return self._panel_link(sender)
 
         if lowered in ("saldo", "balance"):
@@ -127,14 +132,31 @@ class Bot:
         amount_cents = parse_brl(raw_amount)
         if amount_cents is None:
             return t(self.lang, "invalid_amount")
-        pix = self.psp.create_charge(amount_cents, description)
+        description = " ".join(description.split())[:MAX_DESCRIPTION_LEN]
+
+        # Duplo toque no WhatsApp cria cobrança em dobro sem querer —
+        # criamos mesmo assim (pode ser venda repetida de verdade), mas
+        # avisamos para o vendedor cancelar uma das duas se foi engano.
+        duplicate = next(
+            (c for c in self.storage.pending_charges()
+             if c.amount_cents == amount_cents and c.description == description),
+            None)
+
+        try:
+            pix = self.psp.create_charge(amount_cents, description)
+        except Exception:  # PSP fora do ar não pode virar silêncio
+            return t(self.lang, "charge_error")
         charge = self.storage.save_charge(Charge(
             id=None, txid=pix.txid, amount_cents=amount_cents,
             description=description, copy_paste_code=pix.copy_paste_code,
             provider=self.psp.name,
         ))
-        return t(self.lang, "charge_created", summary=charge.summary(),
-                 code=charge.copy_paste_code)
+        reply = t(self.lang, "charge_created", summary=charge.summary(),
+                  code=charge.copy_paste_code)
+        if duplicate is not None:
+            reply += "\n\n" + t(self.lang, "charge_dup_warning",
+                                summary=duplicate.summary(), id=duplicate.id)
+        return reply
 
     def _list_pending(self) -> str:
         pending = self.storage.pending_charges()
@@ -170,6 +192,8 @@ class Bot:
             balance = self.psp.get_balance()
         except NotImplementedError:
             return t(self.lang, "transfer_unsupported", provider=self.psp.name)
+        except Exception:  # PSP fora do ar não pode virar silêncio
+            return t(self.lang, "psp_error")
         return t(self.lang, "balance", amount=format_money(balance))
 
     def _day_start_utc(self) -> str:

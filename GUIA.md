@@ -1,11 +1,11 @@
 # 📖 Guia completo do PixZap
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-07-03 (3ª edição) — simulação de usuários virou
-> suíte de testes e correções: 2º pagamento real no mesmo QR agora gera alerta
-> (antes era engolido como retry — `payment_ref` separado do txid), comandos
-> malformados ensinam o uso certo, áudio/imagem de vendedor recebe resposta
-> ("print não é comprovante"), e guia de teste local (`docs/teste-local.md`).
+> Última atualização: 2026-07-03 (4ª edição) — simulação de 100 jornadas
+> (`docs/simulacao-100-jornadas.md`): PSP fora do ar responde erro amigável em
+> vez de silêncio, duplo toque no "cobrar" avisa sobre cobrança idêntica
+> pendente, mensagens multi-linha e com pontuação funcionam, sinônimos de
+> comandos (pendente/resumo/comandos), descrição limitada a 120 caracteres.
 
 ## O que é
 
