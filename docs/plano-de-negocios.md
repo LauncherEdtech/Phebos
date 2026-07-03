@@ -106,6 +106,26 @@ zero — a diferença é matar rápido o que não valida).
 - **Suporte — SLAs simples:** plano pago < 2 h úteis; grátis < 24 h.
   Toda dúvida repetida vira item do FAQ/onboarding (reduz volume).
 
+### Cliente pouco instruído: como fica a conta no gateway?
+
+Três estágios, do manual ao automático:
+
+1. **MVP (white glove):** nós criamos a conta Asaas JUNTO com o cliente
+   numa chamada de WhatsApp (CPF + e-mail + telefone, ~10 min). A conta é
+   dele; o dinheiro cai com ele; nós só guiamos.
+2. **Quem já tem Mercado Pago** (base gigante entre vendedores informais):
+   conecta a conta existente, sem criar nada.
+3. **Escala (roadmap): subconta white label do Asaas via API**
+   (`POST /v3/accounts`): o onboarding acontece INTEIRO dentro do chat —
+   o cliente manda nome, CPF, e-mail e data de nascimento e o PixZap cria
+   a conta programaticamente. O cliente nunca vê o painel do Asaas; o
+   KYC e a regulação ficam com o Asaas; o dinheiro continua sendo do
+   cliente, na conta dele.
+
+O que NUNCA faremos: receber o dinheiro dos clientes na NOSSA conta para
+repassar (vira atividade de subadquirente/facilitador, regulada pelo
+Bacen, e quebra a promessa "seu dinheiro não passa pela gente").
+
 ### Escala técnica (quando passar de ~50 lojas)
 Hoje: 1 instância = 1 loja (simples e barato de operar).
 Próximo passo: **multi-tenant** — tabela `sellers` (idioma, PSP, números),
