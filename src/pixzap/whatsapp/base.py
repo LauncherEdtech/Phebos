@@ -9,6 +9,7 @@ from typing import List
 class IncomingMessage:
     sender: str   # número E.164 sem '+', ex.: 5511999998888
     text: str
+    kind: str = "text"  # text | image | audio | document | ... (tipo da Meta)
 
 
 class WhatsAppClient(ABC):

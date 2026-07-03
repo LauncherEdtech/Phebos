@@ -52,11 +52,18 @@ class FakePsp(PspClient):
             amount_cents=int(payload.get("amount_cents", 0)),
             provider=self.name,
             payer_name=str(payload.get("payer_name", "")),
+            payment_ref=str(payload.get("payment_ref", "")),
         )
 
     # ── auxiliar de teste ───────────────────────────────────────────
     def payment_webhook_payload(self, txid: str, amount_cents: int,
-                                payer_name: str = "") -> dict:
-        """Monta o payload que o PSP fake enviaria quando um Pix cai."""
+                                payer_name: str = "",
+                                payment_ref: str = "") -> dict:
+        """Monta o payload que o PSP fake enviaria quando um Pix cai.
+
+        payment_ref vazio simula PSP que só manda o txid; preenchido
+        simula pagamento distinto no mesmo QR (ex.: QR estático pago 2x).
+        """
         return {"event": "PAYMENT_RECEIVED", "txid": txid,
-                "amount_cents": amount_cents, "payer_name": payer_name}
+                "amount_cents": amount_cents, "payer_name": payer_name,
+                "payment_ref": payment_ref}

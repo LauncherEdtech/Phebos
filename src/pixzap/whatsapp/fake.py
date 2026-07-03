@@ -13,8 +13,11 @@ class FakeWhatsApp(WhatsAppClient):
         self.outbox.append((to, text))
 
     def parse_incoming(self, payload: dict) -> List[IncomingMessage]:
-        # Formato simples para testes: {"messages": [{"from": ..., "text": ...}]}
-        return [IncomingMessage(sender=str(m["from"]), text=str(m["text"]))
+        # Formato simples para testes:
+        # {"messages": [{"from": ..., "text": ..., "kind": "image"?}]}
+        return [IncomingMessage(sender=str(m["from"]),
+                                text=str(m.get("text", "")),
+                                kind=str(m.get("kind", "text")))
                 for m in payload.get("messages", [])]
 
     # ── auxiliares de teste ─────────────────────────────────────────

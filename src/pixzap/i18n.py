@@ -77,6 +77,14 @@ MESSAGES: dict[str, dict[str, str]] = {
         "transfer_failed": "❌ A transferência não foi executada: {reason}",
         "confirm_invalid": ("Código inválido ou expirado. Comece de novo com "
                             "*transferir valor pix chave*."),
+        "pay_extra": ("🚨 ATENÇÃO: recebi um SEGUNDO pagamento de {amount}{payer} "
+                      "para a cobrança {summary}, que JÁ ESTAVA PAGA. Provável "
+                      "pagamento em duplicidade (código reaproveitado ou pessoa "
+                      "errada pagou junto) — combine a devolução com quem pagou."),
+        "cancel_usage": "Para cancelar, mande *cancelar* e o número da cobrança. Ex.: *cancelar 12*",
+        "non_text": ("Não consigo ler áudio, imagem ou documento. 🙈 E lembre-se: "
+                     "print não é comprovante — quando o Pix cair de verdade, eu "
+                     "aviso aqui sozinho. Mande *ajuda* para ver os comandos."),
         "status_pendente": "pendente",
         "status_pago": "pago",
         "status_cancelado": "cancelado",
@@ -144,6 +152,14 @@ MESSAGES: dict[str, dict[str, str]] = {
         "transfer_done": "✅ Transfer of {amount} to {key} sent (reference {ref}).",
         "transfer_failed": "❌ The transfer was not executed: {reason}",
         "confirm_invalid": "Invalid or expired code. Start again with *transferir amount key*.",
+        "pay_extra": ("🚨 ATTENTION: I received a SECOND payment of {amount}{payer} "
+                      "for charge {summary}, which was ALREADY PAID. Likely a duplicate "
+                      "payment (reused code or the wrong person also paid) — arrange a "
+                      "refund with the payer."),
+        "cancel_usage": "To cancel, send *cancelar* plus the charge number. E.g.: *cancelar 12*",
+        "non_text": ("I can't read audio, images or documents. 🙈 And remember: a "
+                     "screenshot is not proof — when the money truly lands, I'll tell "
+                     "you here myself. Send *ajuda* to see the commands."),
         "status_pendente": "pending",
         "status_pago": "paid",
         "status_cancelado": "canceled",
@@ -209,6 +225,14 @@ MESSAGES: dict[str, dict[str, str]] = {
         "transfer_done": "✅ Transferencia de {amount} a {key} enviada (referencia {ref}).",
         "transfer_failed": "❌ La transferencia no se ejecutó: {reason}",
         "confirm_invalid": "Código inválido o expirado. Empieza de nuevo con *transferir valor clave*.",
+        "pay_extra": ("🚨 ATENCIÓN: recibí un SEGUNDO pago de {amount}{payer} para el "
+                      "cobro {summary}, que YA ESTABA PAGADO. Probable pago duplicado "
+                      "(código reutilizado o la persona equivocada también pagó) — "
+                      "acuerda la devolución con quien pagó."),
+        "cancel_usage": "Para cancelar, envía *cancelar* y el número del cobro. Ej.: *cancelar 12*",
+        "non_text": ("No puedo leer audios, imágenes ni documentos. 🙈 Y recuerda: una "
+                     "captura no es comprobante — cuando el dinero caiga de verdad, te "
+                     "aviso yo mismo. Envía *ajuda* para ver los comandos."),
         "status_pendente": "pendiente",
         "status_pago": "pagado",
         "status_cancelado": "cancelado",
@@ -276,6 +300,14 @@ MESSAGES: dict[str, dict[str, str]] = {
         "transfer_done": "✅ Transfer {amount} ke {key} terkirim (referensi {ref}).",
         "transfer_failed": "❌ Transfer tidak dijalankan: {reason}",
         "confirm_invalid": "Kode tidak valid atau kedaluwarsa. Mulai lagi dengan *transferir nilai kunci*.",
+        "pay_extra": ("🚨 PERHATIAN: saya menerima pembayaran KEDUA sebesar {amount}{payer} "
+                      "untuk tagihan {summary}, yang SUDAH LUNAS. Kemungkinan pembayaran "
+                      "ganda (kode dipakai ulang atau orang yang salah ikut membayar) — "
+                      "atur pengembalian dengan pembayarnya."),
+        "cancel_usage": "Untuk membatalkan, kirim *cancelar* dan nomor tagihan. Contoh: *cancelar 12*",
+        "non_text": ("Saya tidak bisa membaca audio, gambar, atau dokumen. 🙈 Ingat: "
+                     "screenshot bukan bukti bayar — begitu uang benar-benar masuk, saya "
+                     "sendiri yang mengabari. Kirim *ajuda* untuk melihat perintah."),
         "status_pendente": "tertunda",
         "status_pago": "lunas",
         "status_cancelado": "dibatalkan",

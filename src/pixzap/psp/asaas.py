@@ -71,6 +71,9 @@ class AsaasPsp(PspClient):
         if payload.get("event") not in ("PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"):
             return None
         payment = payload.get("payment", {})
+        # txid casa com a COBRANÇA (QR estático); payment.id identifica ESTE
+        # pagamento — QR estático pago 2x gera ids diferentes, e é assim que
+        # o 2º pagamento vira alerta em vez de ser ignorado como retry.
         txid = str(payment.get("pixQrCodeId") or payment.get("id") or "")
         value = payment.get("value")
         if not txid or value is None:
@@ -80,4 +83,5 @@ class AsaasPsp(PspClient):
             amount_cents=round(float(value) * 100),
             provider=self.name,
             payer_name=str(payment.get("payerName", "") or ""),
+            payment_ref=str(payment.get("id", "") or ""),
         )

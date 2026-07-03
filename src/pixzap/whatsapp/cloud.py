@@ -85,9 +85,11 @@ class CloudApiWhatsApp(WhatsAppClient):
         for entry in payload.get("entry", []):
             for change in entry.get("changes", []):
                 for msg in change.get("value", {}).get("messages", []):
-                    if msg.get("type") == "text":
-                        messages.append(IncomingMessage(
-                            sender=str(msg.get("from", "")),
-                            text=str(msg.get("text", {}).get("body", "")),
-                        ))
+                    kind = str(msg.get("type", ""))
+                    messages.append(IncomingMessage(
+                        sender=str(msg.get("from", "")),
+                        text=str(msg.get("text", {}).get("body", ""))
+                        if kind == "text" else "",
+                        kind=kind,
+                    ))
         return messages

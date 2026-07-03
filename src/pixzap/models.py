@@ -24,6 +24,7 @@ class PaymentOutcome(str, Enum):
     DUPLICATE = "duplicado"         # webhook repetido → ignorado (idempotência)
     MISMATCH = "valor_divergente"   # txid conhecido, valor diferente do cobrado
     UNMATCHED = "sem_cobranca"      # Pix caiu sem cobrança associada
+    EXTRA = "pagamento_extra"       # 2º pagamento REAL numa cobrança já paga
 
 
 def utcnow_iso() -> str:
@@ -129,13 +130,24 @@ class Charge:
 
 @dataclass
 class PaymentEvent:
-    """Pagamento confirmado pelo PSP (extraído de um webhook)."""
+    """Pagamento confirmado pelo PSP (extraído de um webhook).
+
+    txid identifica a COBRANÇA; payment_ref identifica ESTE pagamento.
+    A distinção importa porque um QR estático pode ser pago mais de uma
+    vez: mesmo txid, payment_ref diferente. Retry de webhook repete o
+    payment_ref; pagamento novo de verdade traz um payment_ref novo.
+    """
 
     txid: str
     amount_cents: int
     provider: str
     payer_name: str = ""
+    payment_ref: str = ""           # vazio → usa o próprio txid
     received_at: str = field(default_factory=utcnow_iso)
+
+    @property
+    def ref(self) -> str:
+        return self.payment_ref or self.txid
 
 
 @dataclass

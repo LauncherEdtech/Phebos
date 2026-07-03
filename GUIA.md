@@ -1,10 +1,11 @@
 # 📖 Guia completo do PixZap
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-07-03 (2ª edição) — pronto para a API oficial da
-> Meta: fallback automático para template utility quando a janela de 24h está
-> fechada (config `template_name`/`template_lang`) e guia de deploy na stack
-> mais barata (`docs/deploy-barato.md`: Oracle Always Free + Caddy + Meta).
+> Última atualização: 2026-07-03 (3ª edição) — simulação de usuários virou
+> suíte de testes e correções: 2º pagamento real no mesmo QR agora gera alerta
+> (antes era engolido como retry — `payment_ref` separado do txid), comandos
+> malformados ensinam o uso certo, áudio/imagem de vendedor recebe resposta
+> ("print não é comprovante"), e guia de teste local (`docs/teste-local.md`).
 
 ## O que é
 
@@ -90,6 +91,16 @@ mercado (ver `docs/aderencia-mercados.md`):
    autorizado é ignorada sem resposta.
 5. **Dinheiro é sempre `int` em centavos** — nunca float.
 6. **Segredos só em variáveis de ambiente** (.env), nunca no config.yaml.
+
+## Vereditos da conciliação (o que cada webhook pode virar)
+
+| Veredito | Quando | O que o vendedor recebe |
+|---|---|---|
+| `confirmado` | txid + valor exatos numa cobrança pendente | ✅ confirmação com nome do pagador |
+| `duplicado` | mesmo `payment_ref` já processado (retry do PSP) | nada (silêncio anti-spam) |
+| `pagamento_extra` | pagamento NOVO (`payment_ref` inédito) em cobrança JÁ PAGA — QR estático pago 2x, código reaproveitado | 🚨 alerta para devolver |
+| `valor_divergente` | txid certo, valor diferente | ⚠️ alerta; cobrança segue pendente |
+| `sem_cobranca` | txid desconhecido ou cobrança cancelada | ⚠️ alerta de conferência manual |
 
 ## Instalação (desenvolvimento)
 

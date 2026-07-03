@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS charges (
 CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     txid TEXT NOT NULL,
+    payment_ref TEXT NOT NULL DEFAULT '',
     amount_cents INTEGER NOT NULL,
     provider TEXT NOT NULL,
     payer_name TEXT NOT NULL DEFAULT '',
@@ -30,10 +31,11 @@ CREATE TABLE IF NOT EXISTS payments (
     received_at TEXT NOT NULL,
     raw_json TEXT NOT NULL DEFAULT '{}'
 );
--- Idempotência: o mesmo txid confirmado duas vezes pelo mesmo PSP é um
--- webhook repetido, não um pagamento novo.
-CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_provider_txid_confirmed
-    ON payments (provider, txid) WHERE outcome = 'confirmado';
+-- Idempotência: o mesmo payment_ref já processado pelo mesmo PSP é um
+-- webhook repetido, não um pagamento novo (pagamento novo num QR
+-- estático chega com payment_ref DIFERENTE e vira 'pagamento_extra').
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_provider_ref
+    ON payments (provider, payment_ref) WHERE payment_ref != '';
 CREATE TABLE IF NOT EXISTS transfers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     amount_cents INTEGER NOT NULL,
@@ -50,7 +52,19 @@ class Storage:
     def __init__(self, db_path: Path | str):
         self.db_path = str(db_path)
         with self._connect() as conn:
+            self._migrate(conn)
             conn.executescript(SCHEMA)
+
+    @staticmethod
+    def _migrate(conn: sqlite3.Connection) -> None:
+        """Ajustes em bancos criados por versões anteriores."""
+        try:
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(payments)")}
+            if cols and "payment_ref" not in cols:
+                conn.execute("ALTER TABLE payments ADD COLUMN payment_ref TEXT NOT NULL DEFAULT ''")
+                conn.execute("UPDATE payments SET payment_ref = txid WHERE payment_ref = ''")
+        except sqlite3.Error:
+            pass  # banco novo: o SCHEMA cria tudo
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
@@ -122,18 +136,20 @@ class Storage:
                        charge_id: Optional[int], raw: dict) -> None:
         with self._connect() as conn:
             conn.execute(
-                "INSERT INTO payments (txid, amount_cents, provider, payer_name,"
-                " outcome, charge_id, received_at, raw_json) VALUES (?,?,?,?,?,?,?,?)",
-                (event.txid, event.amount_cents, event.provider, event.payer_name,
-                 outcome, charge_id, event.received_at,
+                "INSERT INTO payments (txid, payment_ref, amount_cents, provider,"
+                " payer_name, outcome, charge_id, received_at, raw_json)"
+                " VALUES (?,?,?,?,?,?,?,?,?)",
+                (event.txid, event.ref, event.amount_cents, event.provider,
+                 event.payer_name, outcome, charge_id, event.received_at,
                  json.dumps(raw, ensure_ascii=False)),
             )
 
-    def has_confirmed_payment(self, provider: str, txid: str) -> bool:
+    def has_payment_ref(self, provider: str, payment_ref: str) -> bool:
+        """Já processamos ESTE pagamento (qualquer veredito)? → retry."""
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT 1 FROM payments WHERE provider = ? AND txid = ? AND outcome = 'confirmado'",
-                (provider, txid),
+                "SELECT 1 FROM payments WHERE provider = ? AND payment_ref = ?",
+                (provider, payment_ref),
             ).fetchone()
         return row is not None
 

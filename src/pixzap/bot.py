@@ -97,7 +97,30 @@ class Bot:
         if match:
             return self._cancel(int(match.group("id")))
 
+        # Comando reconhecido mas malformado → ensina o uso certo em vez
+        # do genérico "não entendi" (simulação de usuários mostrou que
+        # "cobrar" sozinho é o erro mais comum de quem está começando).
+        if lowered.startswith("cobrar"):
+            return t(self.lang, "invalid_amount")
+        if lowered.startswith("transferir"):
+            return t(self.lang, "transfer_invalid")
+        if lowered.startswith("confirmar"):
+            return t(self.lang, "confirm_invalid")
+        if lowered.startswith("cancelar"):
+            return t(self.lang, "cancel_usage")
+
         return t(self.lang, "unknown_command")
+
+    def non_text_reply(self, sender: str) -> Optional[str]:
+        """Resposta educada a áudio/imagem/documento de um vendedor.
+
+        O caso clássico: vendedor encaminha o screenshot do comprovante
+        para o bot esperando confirmação — precisamos reforçar que print
+        não confirma nada. Desconhecidos seguem sem resposta.
+        """
+        if sender not in self.seller_numbers:
+            return None
+        return t(self.lang, "non_text")
 
     # ── comandos ────────────────────────────────────────────────────
     def _create_charge(self, raw_amount: str, description: str) -> str:

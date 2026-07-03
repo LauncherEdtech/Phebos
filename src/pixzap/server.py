@@ -65,7 +65,11 @@ def create_app(bot: Bot, reconciler: Reconciler, psp: PspClient,
             return {"status": "ignorado"}
         for message in wa_client.parse_incoming(payload):
             try:
-                reply = bot.handle(message.sender, message.text)
+                if message.kind == "text":
+                    reply = bot.handle(message.sender, message.text)
+                else:
+                    # áudio/imagem/documento: lembrar que print não confirma
+                    reply = bot.non_text_reply(message.sender)
                 if reply:
                     wa_client.send_text(message.sender, reply)
             except Exception:
