@@ -123,7 +123,28 @@ A arquitetura de PSP plugável permite adaptar (ex.: Paystack/Flutterwave)
 sem tocar no núcleo. Gatilho para internacionalizar: MRR estável no Brasil
 (≥ R$ 10k) ou parceiro local forte.
 
-## 7. Riscos e mitigação
+## 6b. Custos de operação no menor valor possível (jul/2026)
+
+| Item | Opção mais barata | Custo |
+|---|---|---|
+| Landing page | Cloudflare Pages ou GitHub Pages (site estático) | R$ 0 |
+| Domínio | `.com.br` no Registro.br | ~R$ 40/ano |
+| Servidor do bot | Oracle Cloud Always Free (VM ARM 24/7) ou VPS básico (Hetzner/Contabo) | R$ 0 ou ~R$ 20-25/mês |
+| HTTPS | Caddy/Certbot (Let's Encrypt) ou Cloudflare na frente | R$ 0 |
+| WhatsApp Cloud API | Direto na Meta, sem BSP (nosso código já integra direto) | sem mensalidade |
+| Número para o bot | Chip pré-pago dedicado (não pode estar em uso no WhatsApp comum) | ~R$ 10-20 (uma vez) |
+| Mensagens Meta (Brasil) | serviço = grátis; utility fora da janela = US$ 0,008/msg | ~R$ 0-5/mês por cliente |
+| Banco de dados | SQLite no volume do próprio servidor | R$ 0 |
+| Monitoramento | UptimeRobot free no /health | R$ 0 |
+
+Como o fluxo do PixZap fica quase grátis na Meta (preços por mensagem
+desde jul/2025): mensagens do vendedor abrem a **janela de serviço de 24h**
+e todas as respostas do bot dentro dela são **gratuitas e ilimitadas**;
+como o vendedor usa o bot todo dia, a janela vive aberta. Só paga quando a
+confirmação de pagamento chega com a janela fechada e precisa de **template
+utility (US$ 0,0080/msg no Brasil ≈ R$ 0,05)**. Marketing (US$ 0,0625/msg)
+só se um dia fizermos campanhas ativas. Total fixo do MVP: **R$ 0 a
+R$ 25/mês + R$ 40/ano de domínio**.
 
 | Risco | Mitigação |
 |---|---|
