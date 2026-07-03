@@ -47,7 +47,8 @@ class Bot:
                  lang: str = DEFAULT_LANG, public_url: str = "",
                  dashboard_secret: str = "",
                  transfer_daily_limit_cents: int = 0,
-                 assistant=None, assistant_financial_context: bool = True):
+                 assistant=None, assistant_financial_context: bool = True,
+                 billing=None):
         self.storage = storage
         self.psp = psp
         self.seller_numbers = set(seller_numbers)
@@ -63,6 +64,8 @@ class Bot:
         # financeiros só entram com consentimento persistido do vendedor.
         self.assistant = assistant
         self.assistant_financial_context = assistant_financial_context
+        # Cobrança da assinatura pelo chat (billing.py); None = sem plano
+        self.billing = billing
 
     def handle(self, sender: str, text: str) -> Optional[str]:
         """Processa uma mensagem e devolve a resposta (None = ignorar)."""
@@ -106,6 +109,15 @@ class Bot:
         match = CANCELAR_RE.match(text)
         if match:
             return self._cancel(int(match.group("id")))
+
+        # Assinatura do plano (pagamento por Pix no próprio chat)
+        if self.billing is not None:
+            if lowered in ("assinar", "plano", "subscribe", "suscribir",
+                           "langganan"):
+                return self._subscribe()
+            if lowered in ("paguei", "já paguei", "ja paguei", "paid",
+                           "pagué", "pague", "sudah bayar"):
+                return self._check_subscription()
 
         # Consentimento do assistente de IA sobre os dados financeiros
         if lowered in ("assistente sim", "assistant yes", "asistente sí",
@@ -168,6 +180,16 @@ class Bot:
             return t(self.lang, "invalid_amount")
         description = " ".join(description.split())[:MAX_DESCRIPTION_LEN]
 
+        # Quota do plano grátis: estourou sem pagar → bloqueia com carinho
+        if self.billing is not None and self.billing.blocked():
+            # antes de bloquear, confere no PSP se a fatura já foi paga
+            # (o vendedor pode ter pago e esquecido do "paguei")
+            if not self.billing.check_paid():
+                return t(self.lang, "billing_blocked",
+                         quota=self.billing.free_quota,
+                         price=format_money(self.billing.price_cents),
+                         month=self.billing.month_label())
+
         # Duplo toque no WhatsApp cria cobrança em dobro sem querer —
         # criamos mesmo assim (pode ser venda repetida de verdade), mas
         # avisamos para o vendedor cancelar uma das duas se foi engano.
@@ -190,7 +212,39 @@ class Bot:
         if duplicate is not None:
             reply += "\n\n" + t(self.lang, "charge_dup_warning",
                                 summary=duplicate.summary(), id=duplicate.id)
+        # aviso amigável quando o plano grátis está acabando
+        if self.billing is not None and not self.billing.is_paid():
+            left = self.billing.remaining()
+            if left <= 3:
+                reply += "\n\n" + t(self.lang, "billing_low", left=left,
+                                    price=format_money(self.billing.price_cents))
         return reply
+
+    # ── assinatura do plano ─────────────────────────────────────────
+    def _subscribe(self) -> str:
+        if self.billing.is_paid():
+            return t(self.lang, "billing_already_paid",
+                     month=self.billing.month_label())
+        try:
+            invoice = self.billing.get_or_create_invoice()
+        except Exception:
+            return t(self.lang, "charge_error")
+        return t(self.lang, "billing_offer",
+                 month=self.billing.month_label(),
+                 price=format_money(invoice["amount_cents"]),
+                 code=invoice["copy_paste_code"])
+
+    def _check_subscription(self) -> str:
+        try:
+            paid = self.billing.check_paid()
+        except Exception:
+            return t(self.lang, "psp_error")
+        if paid is None:
+            return self._subscribe()  # nem tem fatura ainda: oferece
+        if paid:
+            return t(self.lang, "billing_confirmed",
+                     month=self.billing.month_label())
+        return t(self.lang, "billing_not_yet")
 
     def _list_pending(self) -> str:
         pending = self.storage.pending_charges()

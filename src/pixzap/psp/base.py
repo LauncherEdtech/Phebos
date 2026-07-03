@@ -27,6 +27,11 @@ class PspClient(ABC):
         """Saldo disponível na conta do PSP, em centavos."""
         raise NotImplementedError
 
+    def charge_paid(self, txid: str) -> bool:
+        """Consulta ativa: a cobrança já foi paga? (usada pelo billing,
+        onde não temos webhook — a fonte de verdade continua sendo o PSP)."""
+        raise NotImplementedError
+
     def transfer(self, amount_cents: int, pix_key: str,
                  description: str = "") -> str:
         """Envia um Pix para a chave informada; devolve o id da transferência.

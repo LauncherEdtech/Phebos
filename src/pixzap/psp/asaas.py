@@ -63,6 +63,14 @@ class AsaasPsp(PspClient):
         resp.raise_for_status()
         return str(resp.json()["id"])
 
+    def charge_paid(self, txid: str) -> bool:
+        """Consulta pagamentos do QR estático (beta: validar no sandbox)."""
+        resp = requests.get(f"{self.base_url}/payments",
+                            params={"pixQrCodeId": txid, "status": "RECEIVED"},
+                            headers=self._headers(), timeout=30)
+        resp.raise_for_status()
+        return int(resp.json().get("totalCount", 0)) > 0
+
     def verify_webhook(self, headers: Mapping[str, str], body: bytes) -> bool:
         return headers.get("asaas-access-token", "") == self.webhook_token
 

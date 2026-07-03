@@ -21,9 +21,17 @@ class FakePsp(PspClient):
         self.charges: dict[str, PixCharge] = {}
         self.balance_cents = balance_cents
         self.transfers: list[tuple[int, str]] = []  # (valor, chave)
+        self.paid_charges: set[str] = set()         # txids pagos (billing)
 
     def get_balance(self) -> int:
         return self.balance_cents
+
+    def charge_paid(self, txid: str) -> bool:
+        return txid in self.paid_charges
+
+    def mark_charge_paid(self, txid: str) -> None:
+        """Auxiliar de teste: simula o Pix da fatura caindo."""
+        self.paid_charges.add(txid)
 
     def transfer(self, amount_cents: int, pix_key: str, description: str = "") -> str:
         if amount_cents > self.balance_cents:

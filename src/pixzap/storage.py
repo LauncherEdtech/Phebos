@@ -40,6 +40,16 @@ CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS subscriptions (
+    month TEXT PRIMARY KEY,             -- 'AAAA-MM'
+    amount_cents INTEGER NOT NULL,
+    txid TEXT NOT NULL,
+    copy_paste_code TEXT NOT NULL DEFAULT '',
+    provider TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'pendente',
+    created_at TEXT NOT NULL,
+    paid_at TEXT
+);
 CREATE TABLE IF NOT EXISTS transfers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     amount_cents INTEGER NOT NULL,
@@ -167,6 +177,38 @@ class Storage:
                 " ORDER BY p.id DESC LIMIT ?", (limit,),
             ).fetchall()
         return [dict(r) for r in rows]
+
+    def count_charges_since(self, iso_timestamp: str) -> int:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS n FROM charges WHERE created_at >= ?",
+                (iso_timestamp,),
+            ).fetchone()
+        return int(row["n"])
+
+    # ── assinatura do plano (billing do próprio PixZap) ──────────────
+    def get_subscription(self, month: str) -> Optional[dict]:
+        with self._connect() as conn:
+            row = conn.execute("SELECT * FROM subscriptions WHERE month = ?",
+                               (month,)).fetchone()
+        return dict(row) if row else None
+
+    def save_subscription(self, month: str, amount_cents: int, txid: str,
+                          copy_paste_code: str, provider: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO subscriptions (month, amount_cents, txid,"
+                " copy_paste_code, provider, created_at) VALUES (?,?,?,?,?,?)",
+                (month, amount_cents, txid, copy_paste_code, provider,
+                 utcnow_iso()),
+            )
+
+    def mark_subscription_paid(self, month: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "UPDATE subscriptions SET status = 'pago', paid_at = ?"
+                " WHERE month = ?", (utcnow_iso(), month),
+            )
 
     # ── configurações persistentes (ex.: consentimento do assistente) ─
     def get_setting(self, key: str, default: str = "") -> str:
