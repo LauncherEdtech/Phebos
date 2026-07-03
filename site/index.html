@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="PixZap — confirmação automática de Pix no WhatsApp. Screenshot não é comprovante.">
+<meta name="description" content="PixZap: o bot que confere o Pix por você. O cliente paga, o dinheiro cai, você recebe o aviso no WhatsApp.">
 <!--HEAD-->
-<title>PixZap — o Pix caiu? A gente avisa.</title>
+<title>PixZap | O Pix caiu? A gente te avisa.</title>
 <style>
 @font-face {
   font-family: 'Archivo Black';
@@ -21,7 +21,6 @@
   --pix: #0FA895;
   --pix-soft: #0FA89518;
   --zap: #1FAF54;
-  --zap-bright: #25D366;
   --danger: #D64545;
   --danger-soft: #D6454514;
   --chat-bg: #E4EFE7;
@@ -31,20 +30,10 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #0B1512;
-    --ink: #E9F2ED;
-    --muted: #93A8A0;
-    --card: #12201B;
-    --line: #21332C;
-    --pix: #29C7B2;
-    --pix-soft: #29C7B21c;
-    --zap: #2BC763;
-    --zap-bright: #25D366;
-    --danger: #F0655A;
-    --danger-soft: #F0655A1f;
-    --chat-bg: #0E1A15;
-    --bubble-me: #14432A;
-    --bubble-bot: #1A2A23;
+    --paper: #0B1512; --ink: #E9F2ED; --muted: #93A8A0; --card: #12201B;
+    --line: #21332C; --pix: #29C7B2; --pix-soft: #29C7B21c; --zap: #2BC763;
+    --danger: #F0655A; --danger-soft: #F0655A1f; --chat-bg: #0E1A15;
+    --bubble-me: #14432A; --bubble-bot: #1A2A23;
     --shadow: 0 14px 40px -18px rgba(0, 0, 0, .7);
   }
 }
@@ -74,7 +63,6 @@ h1, h2, .display { font-family: 'Archivo Black', system-ui, sans-serif; font-wei
 .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 .eyebrow { font-size: .78rem; text-transform: uppercase; letter-spacing: .14em; font-weight: 700; color: var(--pix); }
 
-/* ── nav ── */
 nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(12px); background: color-mix(in srgb, var(--paper) 82%, transparent); border-bottom: 1px solid var(--line); }
 .nav-inner { display: flex; align-items: center; gap: 16px; padding: 12px 24px; max-width: 1080px; margin: 0 auto; }
 .logo { font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 900; font-synthesis-weight: none; font-size: 1.15rem; text-decoration: none; color: var(--ink); }
@@ -84,13 +72,11 @@ nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(12px); backgr
 .langs button[aria-pressed="true"] { background: var(--pix); border-color: var(--pix); color: #fff; }
 .langs button:focus-visible, .cta:focus-visible, .cta-ghost:focus-visible { outline: 3px solid var(--pix); outline-offset: 2px; }
 
-/* ── CTA ── */
 .cta { display: inline-flex; align-items: center; gap: 10px; background: var(--zap); color: #fff; text-decoration: none; font-weight: 800; font-size: 1.02rem; padding: 15px 28px; border-radius: 14px; box-shadow: 0 10px 26px -10px var(--zap); transition: transform .15s ease, box-shadow .15s ease; }
 .cta:hover { transform: translateY(-2px); box-shadow: 0 16px 32px -10px var(--zap); }
 .cta.small { padding: 9px 18px; font-size: .88rem; border-radius: 10px; box-shadow: none; }
 .cta-note { font-size: .8rem; color: var(--muted); margin-top: 10px; }
 
-/* ── hero ── */
 .hero { position: relative; padding: 72px 0 88px; }
 .hero-bg { position: absolute; inset: 0; overflow: hidden; z-index: -1; }
 .blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .35; animation: drift 16s ease-in-out infinite alternate; }
@@ -98,7 +84,7 @@ nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(12px); backgr
 .blob.b2 { width: 340px; height: 340px; background: var(--zap); bottom: -160px; left: -100px; animation-delay: -8s; }
 @keyframes drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(40px, 30px) scale(1.12); } }
 .hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; }
-.hero h1 { font-size: clamp(2rem, 4.6vw, 3.4rem); margin: 14px 0 18px; }
+.hero h1 { font-size: clamp(2rem, 4.6vw, 3.3rem); margin: 14px 0 18px; }
 .hero h1 .strike { position: relative; white-space: nowrap; }
 .hero h1 .strike::after { content: ''; position: absolute; left: -2%; right: -2%; top: 54%; height: .14em; background: var(--danger); border-radius: 2px; transform: rotate(-2deg) scaleX(0); transform-origin: left; animation: strike .5s .9s ease-out forwards; }
 @keyframes strike { to { transform: rotate(-2deg) scaleX(1); } }
@@ -106,10 +92,9 @@ nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(12px); backgr
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
 .chip { font-size: .76rem; font-weight: 700; color: var(--pix); background: var(--pix-soft); border: 1px solid color-mix(in srgb, var(--pix) 35%, transparent); padding: 5px 12px; border-radius: 999px; }
 
-/* ── phone demo ── */
 .phone { width: min(340px, 88vw); margin: 0 auto; background: var(--chat-bg); border: 1px solid var(--line); border-radius: 30px; box-shadow: var(--shadow); overflow: hidden; }
 .phone-top { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
-.avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--pix), var(--zap)); display: grid; place-items: center; color: #fff; font-size: 1rem; }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--pix), var(--zap)); display: grid; place-items: center; color: #fff; font-family: 'Archivo Black', system-ui, sans-serif; font-size: .8rem; }
 .phone-top .name { font-weight: 700; font-size: .9rem; line-height: 1.2; }
 .phone-top .status { font-size: .72rem; color: var(--zap); }
 .chat { padding: 16px 12px 20px; min-height: 380px; display: flex; flex-direction: column; gap: 10px; }
@@ -129,7 +114,6 @@ nav { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(12px); backgr
 .typing i:nth-child(3) { animation-delay: .36s; }
 @keyframes blink { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
 
-/* ── sections ── */
 section { padding: 76px 0; scroll-margin-top: 64px; }
 .sec-head { max-width: 40rem; margin-bottom: 40px; }
 .sec-head h2 { font-size: clamp(1.5rem, 3vw, 2.2rem); margin-top: 12px; }
@@ -137,34 +121,28 @@ section { padding: 76px 0; scroll-margin-top: 64px; }
 .reveal { opacity: 0; transform: translateY(26px); transition: opacity .6s ease, transform .6s ease; }
 .reveal.in { opacity: 1; transform: none; }
 
-/* problema */
 .problema { background: var(--danger-soft); border-block: 1px solid color-mix(in srgb, var(--danger) 25%, transparent); }
 .problema .eyebrow { color: var(--danger); }
 .prob-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
 .prob-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
-.prob-card .ico { font-size: 1.5rem; }
-.prob-card h3 { font-size: 1rem; margin: 10px 0 6px; }
+.prob-card h3 { font-size: 1rem; margin-bottom: 6px; }
 .prob-card p { font-size: .9rem; color: var(--muted); }
 .recibo { position: relative; display: inline-block; margin-top: 8px; background: var(--card); border: 1px dashed var(--line); border-radius: 10px; padding: 14px 18px; font-size: .8rem; }
-.carimbo { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-14deg); border: 3px solid var(--danger); color: var(--danger); font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 900; font-synthesis-weight: none; font-size: 1.1rem; padding: 2px 12px; border-radius: 6px; opacity: .9; letter-spacing: .1em; }
+.carimbo { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-14deg); border: 3px solid var(--danger); color: var(--danger); font-family: 'Archivo Black', system-ui, sans-serif; font-size: 1.1rem; padding: 2px 12px; border-radius: 6px; opacity: .9; letter-spacing: .1em; }
 
-/* passos */
 .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; counter-reset: passo; }
 .step { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 26px 22px; position: relative; transition: transform .2s ease; }
 .step:hover { transform: translateY(-4px); }
-.step::before { counter-increment: passo; content: counter(passo); position: absolute; top: -16px; left: 20px; width: 34px; height: 34px; border-radius: 10px; background: var(--pix); color: #fff; font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 900; font-synthesis-weight: none; display: grid; place-items: center; font-size: .95rem; }
+.step::before { counter-increment: passo; content: counter(passo); position: absolute; top: -16px; left: 20px; width: 34px; height: 34px; border-radius: 10px; background: var(--pix); color: #fff; font-family: 'Archivo Black', system-ui, sans-serif; display: grid; place-items: center; font-size: .95rem; }
 .step h3 { font-size: 1.02rem; margin: 8px 0 8px; }
 .step p { font-size: .92rem; color: var(--muted); }
 .step .exemplo { margin-top: 12px; font-size: .78rem; background: var(--pix-soft); color: var(--pix); padding: 8px 10px; border-radius: 10px; }
 
-/* segurança */
 .seg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
-.seg { border: 1px solid var(--line); background: var(--card); border-radius: 14px; padding: 18px; display: flex; gap: 12px; align-items: flex-start; }
-.seg .ico { flex: none; width: 38px; height: 38px; border-radius: 10px; background: var(--pix-soft); display: grid; place-items: center; font-size: 1.1rem; }
+.seg { border: 1px solid var(--line); background: var(--card); border-radius: 14px; padding: 18px 18px 18px 20px; border-left: 4px solid var(--pix); }
 .seg h3 { font-size: .92rem; }
 .seg p { font-size: .82rem; color: var(--muted); margin-top: 3px; }
 
-/* preços */
 .precos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; max-width: 760px; margin: 0 auto; }
 .plano { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 30px 26px; display: flex; flex-direction: column; }
 .plano.destaque { border: 2px solid var(--pix); position: relative; box-shadow: var(--shadow); }
@@ -178,16 +156,14 @@ section { padding: 76px 0; scroll-margin-top: 64px; }
 .plano .cta { margin-top: auto; justify-content: center; }
 .plano .cta.ghost { background: transparent; color: var(--pix); border: 2px solid var(--pix); box-shadow: none; }
 
-/* FAQ */
 .faq { max-width: 680px; margin: 0 auto; }
 .faq details { border-bottom: 1px solid var(--line); }
 .faq summary { cursor: pointer; font-weight: 700; padding: 18px 4px; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .faq summary::-webkit-details-marker { display: none; }
-.faq summary::after { content: '+'; font-family: 'Archivo Black', system-ui, sans-serif; font-weight: 900; font-synthesis-weight: none; color: var(--pix); transition: transform .2s; }
+.faq summary::after { content: '+'; font-family: 'Archivo Black', system-ui, sans-serif; color: var(--pix); transition: transform .2s; }
 .faq details[open] summary::after { transform: rotate(45deg); }
 .faq details p { padding: 0 4px 18px; color: var(--muted); font-size: .94rem; }
 
-/* CTA final + footer */
 .final { text-align: center; background: var(--pix-soft); border-top: 1px solid var(--line); }
 .final h2 { font-size: clamp(1.6rem, 3.4vw, 2.4rem); max-width: 26ch; margin: 0 auto 12px; }
 .final p { color: var(--muted); margin-bottom: 26px; }
@@ -212,13 +188,14 @@ footer { padding: 34px 0 44px; border-top: 1px solid var(--line); }
 
 <nav>
   <div class="nav-inner">
-    <a class="logo" href="#">Pix<em>Zap</em> 💸</a>
+    <a class="logo" href="#">Pix<em>Zap</em></a>
     <div class="langs" role="group" aria-label="Idioma">
       <button data-lang="pt" aria-pressed="true">PT</button>
       <button data-lang="en" aria-pressed="false">EN</button>
       <button data-lang="es" aria-pressed="false">ES</button>
+      <button data-lang="id" aria-pressed="false">ID</button>
     </div>
-    <a class="cta small" href="#comecar" data-i18n="nav_cta">Começar</a>
+    <a class="cta small" href="#comecar" data-i18n="nav_cta">Quero testar</a>
   </div>
 </nav>
 
@@ -226,21 +203,21 @@ footer { padding: 34px 0 44px; border-top: 1px solid var(--line); }
   <div class="hero-bg"><div class="blob b1"></div><div class="blob b2"></div></div>
   <div class="wrap hero-grid">
     <div>
-      <span class="eyebrow" data-i18n="hero_eyebrow">Para quem vende pelo WhatsApp</span>
-      <h1><span data-i18n="hero_h1a">O Pix caiu? A gente avisa.</span><br>
+      <span class="eyebrow" data-i18n="hero_eyebrow">Feito para quem vende no WhatsApp</span>
+      <h1><span data-i18n="hero_h1a">O Pix caiu? A gente te avisa.</span><br>
       <span class="strike" data-i18n="hero_h1b">Conferir extrato</span> <span data-i18n="hero_h1c">nunca mais.</span></h1>
-      <p class="lead" data-i18n="hero_lead">O PixZap gera a cobrança dentro do chat e só confirma quando o dinheiro cai de verdade — direto do banco, exato ao centavo. Screenshot deixa de valer como comprovante.</p>
-      <a class="cta" href="#comecar" data-i18n="hero_cta">Começar grátis no WhatsApp →</a>
-      <div class="cta-note" data-i18n="hero_note">Sem cartão de crédito • Configuração em minutos • Cancele quando quiser</div>
+      <p class="lead" data-i18n="hero_lead">Você manda "cobrar 150 João" aqui no chat. O bot cria o Pix, o cliente paga e, quando o dinheiro entra de verdade na sua conta, você recebe o aviso na hora. Print de comprovante deixa de valer.</p>
+      <a class="cta" href="#comecar" data-i18n="hero_cta">Começar grátis no WhatsApp</a>
+      <div class="cta-note" data-i18n="hero_note">Grátis para começar. Sem cartão. Pronto em 10 minutos.</div>
       <div class="chips">
-        <span class="chip" data-i18n="chip1">✓ Conciliação ao centavo</span>
-        <span class="chip" data-i18n="chip2">✓ API oficial do WhatsApp</span>
-        <span class="chip" data-i18n="chip3">✓ Asaas & Mercado Pago</span>
+        <span class="chip" data-i18n="chip1">Confere ao centavo</span>
+        <span class="chip" data-i18n="chip2">API oficial do WhatsApp</span>
+        <span class="chip" data-i18n="chip3">Seu dinheiro não passa pela gente</span>
       </div>
     </div>
     <div class="phone" aria-hidden="true">
       <div class="phone-top">
-        <div class="avatar">💸</div>
+        <div class="avatar">PZ</div>
         <div><div class="name">PixZap</div><div class="status" data-i18n="phone_status">online</div></div>
       </div>
       <div class="chat" id="chat"></div>
@@ -251,15 +228,15 @@ footer { padding: 34px 0 44px; border-top: 1px solid var(--line); }
 <section class="problema">
   <div class="wrap">
     <div class="sec-head reveal">
-      <span class="eyebrow" data-i18n="prob_eyebrow">O problema</span>
-      <h2 data-i18n="prob_h2">O golpe do comprovante falso está comendo o seu lucro</h2>
-      <p data-i18n="prob_p">Todo dia, vendedores entregam pedidos confiando num print — e o dinheiro nunca cai. E mesmo quando não há golpe, conferir o extrato na mão consome horas da sua semana.</p>
-      <div class="recibo mono">Comprovante de transferência<br>R$ 150,00 — 02/07 14:32<span class="carimbo" data-i18n="prob_stamp">FALSO</span></div>
+      <span class="eyebrow" data-i18n="prob_eyebrow">Você conhece essa rotina</span>
+      <h2 data-i18n="prob_h2">O golpe do comprovante falso existe porque conferir dá trabalho</h2>
+      <p data-i18n="prob_p">Cliente manda o print. Você abre o app do banco, procura a transferência, confere o valor, volta pro chat e libera o pedido. Agora multiplica isso por todas as vendas do dia. Num dia corrido, alguém entrega sem conferir. É exatamente aí que o golpista trabalha.</p>
+      <div class="recibo mono">Comprovante de transferência<br>R$ 150,00 &middot; 02/07 14:32<span class="carimbo" data-i18n="prob_stamp">FALSO</span></div>
     </div>
     <div class="prob-grid">
-      <div class="prob-card reveal"><div class="ico">🖼️</div><h3 data-i18n="prob1_h">O print parece real</h3><p data-i18n="prob1_p">Editar um comprovante leva 2 minutos em qualquer app. A olho nu, é impossível ter certeza.</p></div>
-      <div class="prob-card reveal"><div class="ico">⏱️</div><h3 data-i18n="prob2_h">Conferir na mão não escala</h3><p data-i18n="prob2_p">Abrir o app do banco, achar a transferência, casar com o pedido... a cada venda. Todo santo dia.</p></div>
-      <div class="prob-card reveal"><div class="ico">📦</div><h3 data-i18n="prob3_h">Entregou sem cair, já era</h3><p data-i18n="prob3_p">Produto na mão do cliente e o "pagamento" nunca compensa. O prejuízo é todo seu.</p></div>
+      <div class="prob-card reveal"><h3 data-i18n="prob1_h">O print engana mesmo</h3><p data-i18n="prob1_p">Tem app que gera comprovante falso pronto, com banco, valor e horário. De tão bem feito, nem quem trabalha em banco pega de primeira.</p></div>
+      <div class="prob-card reveal"><h3 data-i18n="prob2_h">Seu tempo vale mais</h3><p data-i18n="prob2_p">Meia hora por dia conferindo extrato vira 15 horas no mês. É um dia e meio de trabalho só apertando F5 no app do banco.</p></div>
+      <div class="prob-card reveal"><h3 data-i18n="prob3_h">Entregou, perdeu</h3><p data-i18n="prob3_p">Se o produto saiu e o dinheiro não caiu, não tem a quem recorrer. O prejuízo é seu e a mercadoria já era.</p></div>
     </div>
   </div>
 </section>
@@ -268,12 +245,12 @@ footer { padding: 34px 0 44px; border-top: 1px solid var(--line); }
   <div class="wrap">
     <div class="sec-head reveal">
       <span class="eyebrow" data-i18n="how_eyebrow">Como funciona</span>
-      <h2 data-i18n="how_h2">Três mensagens. Zero conferência.</h2>
+      <h2 data-i18n="how_h2">Do pedido ao dinheiro na conta, sem sair do chat</h2>
     </div>
     <div class="steps">
-      <div class="step reveal"><h3 data-i18n="step1_h">Cobre dentro do chat</h3><p data-i18n="step1_p">Mande "cobrar" com o valor e uma descrição. O bot gera o Pix copia-e-cola na hora.</p><div class="exemplo mono" data-i18n="step1_ex">cobrar 150,00 João pedido 12</div></div>
-      <div class="step reveal"><h3 data-i18n="step2_h">O cliente paga</h3><p data-i18n="step2_p">Encaminhe o código para o cliente. Ele paga no banco que preferir, como qualquer Pix.</p><div class="exemplo mono">00020126...5802BR</div></div>
-      <div class="step reveal"><h3 data-i18n="step3_h">Confirmação automática</h3><p data-i18n="step3_p">Quando o dinheiro cai, o banco nos avisa e você recebe a confirmação no chat. Pode liberar o pedido.</p><div class="exemplo" data-i18n="step3_ex">✅ Pix de R$ 150,00 confirmado!</div></div>
+      <div class="step reveal"><h3 data-i18n="step1_h">Você cobra no chat</h3><p data-i18n="step1_p">Manda o valor e o nome do pedido. O bot responde na hora com o código de pagamento pronto para encaminhar.</p><div class="exemplo mono" data-i18n="step1_ex">cobrar 150,00 João pedido 12</div></div>
+      <div class="step reveal"><h3 data-i18n="step2_h">O cliente paga como sempre</h3><p data-i18n="step2_p">Ele recebe o Pix copia-e-cola e paga pelo banco que usa todo dia. Nada muda para o seu cliente.</p><div class="exemplo mono">00020126...5802BR</div></div>
+      <div class="step reveal"><h3 data-i18n="step3_h">O banco confirma, você entrega</h3><p data-i18n="step3_p">Quando o dinheiro cai, o aviso chega no seu chat em segundos. Sem print, sem extrato, sem dúvida.</p><div class="exemplo" data-i18n="step3_ex">Pix de R$ 150,00 confirmado. Pode liberar!</div></div>
     </div>
   </div>
 </section>
@@ -281,16 +258,16 @@ footer { padding: 34px 0 44px; border-top: 1px solid var(--line); }
 <section style="padding-top: 0;">
   <div class="wrap">
     <div class="sec-head reveal">
-      <span class="eyebrow" data-i18n="seg_eyebrow">Segurança em primeiro lugar</span>
-      <h2 data-i18n="seg_h2">Feito para não ser enganado</h2>
+      <span class="eyebrow" data-i18n="seg_eyebrow">Por dentro</span>
+      <h2 data-i18n="seg_h2">Construído para não ser enganado</h2>
     </div>
     <div class="seg-grid">
-      <div class="seg reveal"><div class="ico">🏦</div><div><h3 data-i18n="seg1_h">Só o banco confirma</h3><p data-i18n="seg1_p">A confirmação vem por webhook autenticado do provedor de pagamento — nunca de mensagem ou imagem.</p></div></div>
-      <div class="seg reveal"><div class="ico">🎯</div><div><h3 data-i18n="seg2_h">Exato ao centavo</h3><p data-i18n="seg2_p">Pagou R$ 149,99 numa cobrança de R$ 150,00? A cobrança segue pendente e você é alertado.</p></div></div>
-      <div class="seg reveal"><div class="ico">🔁</div><div><h3 data-i18n="seg3_h">Sem confirmação duplicada</h3><p data-i18n="seg3_p">O mesmo pagamento nunca confirma dois pedidos — idempotência garantida em banco de dados.</p></div></div>
-      <div class="seg reveal"><div class="ico">🔐</div><div><h3 data-i18n="seg4_h">Só você comanda</h3><p data-i18n="seg4_p">Apenas números autorizados falam com o bot. Qualquer outro é ignorado em silêncio.</p></div></div>
-      <div class="seg reveal"><div class="ico">📊</div><div><h3 data-i18n="seg5_h">Painel sem senha</h3><p data-i18n="seg5_p">Peça "painel" no chat e receba um link mágico com suas métricas: recebido hoje, semana, pendências.</p></div></div>
-      <div class="seg reveal"><div class="ico">🌎</div><div><h3 data-i18n="seg6_h">Multi-idiomas</h3><p data-i18n="seg6_p">Português, inglês e espanhol — pronto para atender e crescer além do Brasil.</p></div></div>
+      <div class="seg reveal"><h3 data-i18n="seg1_h">Quem confirma é o banco</h3><p data-i18n="seg1_p">O aviso de pagamento vem do provedor de pagamento, autenticado. Mensagem de cliente não confirma nada.</p></div>
+      <div class="seg reveal"><h3 data-i18n="seg2_h">Centavo é centavo</h3><p data-i18n="seg2_p">Cobrou R$ 150,00 e caiu R$ 149,99? A cobrança continua pendente e você recebe um alerta na hora.</p></div>
+      <div class="seg reveal"><h3 data-i18n="seg3_h">Nada confirma duas vezes</h3><p data-i18n="seg3_p">O mesmo pagamento nunca libera dois pedidos, mesmo que o banco envie o aviso repetido.</p></div>
+      <div class="seg reveal"><h3 data-i18n="seg4_h">Só você dá ordens</h3><p data-i18n="seg4_p">O bot só obedece aos números que você autorizou. Estranho que escrever é ignorado, sem resposta.</p></div>
+      <div class="seg reveal"><h3 data-i18n="seg5_h">Suas métricas, sem senha</h3><p data-i18n="seg5_p">Escreva "painel" e receba um link que abre suas vendas do dia e da semana. O link expira sozinho em 24 horas.</p></div>
+      <div class="seg reveal"><h3 data-i18n="seg6_h">Saldo e repasses no chat</h3><p data-i18n="seg6_p">Consulte o saldo e mande transferências com código de confirmação e limite diário que você define.</p></div>
     </div>
   </div>
 </section>
@@ -299,7 +276,7 @@ footer { padding: 34px 0 44px; border-top: 1px solid var(--line); }
   <div class="wrap">
     <div class="sec-head reveal" style="text-align:center; margin-inline:auto;">
       <span class="eyebrow" data-i18n="preco_eyebrow">Preço de lançamento</span>
-      <h2 data-i18n="preco_h2">Paga-se sozinho no primeiro golpe evitado</h2>
+      <h2 data-i18n="preco_h2">Um golpe evitado paga mais de um ano disso aqui</h2>
     </div>
     <div class="precos-grid">
       <div class="plano reveal">
@@ -308,21 +285,21 @@ footer { padding: 34px 0 44px; border-top: 1px solid var(--line); }
         <ul>
           <li data-i18n="p1_f1">20 confirmações por mês</li>
           <li data-i18n="p1_f2">1 número autorizado</li>
-          <li data-i18n="p1_f3">Alertas de valor divergente</li>
-          <li data-i18n="p1_f4">Resumo diário no chat</li>
+          <li data-i18n="p1_f3">Alerta de valor errado</li>
+          <li data-i18n="p1_f4">Resumo do dia no chat</li>
         </ul>
         <a class="cta ghost" href="#comecar" data-i18n="p1_cta">Testar grátis</a>
       </div>
       <div class="plano destaque reveal">
-        <span class="tag" data-i18n="p2_tag">Mais popular</span>
+        <span class="tag" data-i18n="p2_tag">Recomendado</span>
         <h3 data-i18n="p2_nome">Profissional</h3>
         <div class="preco">R$ 49<small data-i18n="p2_per">/mês</small></div>
         <ul>
-          <li data-i18n="p2_f1">Confirmações ilimitadas</li>
+          <li data-i18n="p2_f1">Confirmações sem limite</li>
           <li data-i18n="p2_f2">Até 3 números da equipe</li>
-          <li data-i18n="p2_f3">Painel de métricas via link mágico</li>
-          <li data-i18n="p2_f4">Suporte prioritário no WhatsApp</li>
-          <li data-i18n="p2_f5">Exportação para planilha</li>
+          <li data-i18n="p2_f3">Painel de métricas</li>
+          <li data-i18n="p2_f4">Saldo e transferências no chat</li>
+          <li data-i18n="p2_f5">Suporte com gente de verdade</li>
         </ul>
         <a class="cta" href="#comecar" data-i18n="p2_cta">Assinar agora</a>
       </div>
@@ -332,29 +309,29 @@ footer { padding: 34px 0 44px; border-top: 1px solid var(--line); }
 
 <section style="padding-top: 0;">
   <div class="wrap">
-    <div class="sec-head reveal"><span class="eyebrow">FAQ</span><h2 data-i18n="faq_h2">Perguntas de quem vende de verdade</h2></div>
+    <div class="sec-head reveal"><span class="eyebrow">FAQ</span><h2 data-i18n="faq_h2">O que todo mundo pergunta antes de assinar</h2></div>
     <div class="faq reveal">
-      <details><summary data-i18n="faq1_q">Preciso trocar de banco?</summary><p data-i18n="faq1_a">Não. Você cria uma conta gratuita num provedor de pagamento (Asaas ou Mercado Pago), que gera as cobranças Pix. O dinheiro é seu, na sua conta — o PixZap só escuta a confirmação.</p></details>
-      <details><summary data-i18n="faq2_q">Funciona com o meu número atual de WhatsApp?</summary><p data-i18n="faq2_a">O bot usa um número dedicado via API oficial da Meta (nada de apps paralelos que derrubam sua conta). Você conversa com ele do seu número de sempre.</p></details>
-      <details><summary data-i18n="faq3_q">E se o cliente pagar um valor diferente?</summary><p data-i18n="faq3_a">A cobrança NÃO é confirmada. Você recebe um alerta com o valor esperado e o recebido, e decide o que fazer antes de entregar.</p></details>
-      <details><summary data-i18n="faq4_q">O PixZap toca no meu dinheiro?</summary><p data-i18n="faq4_a">Nunca. O pagamento vai direto do seu cliente para a sua conta no provedor. O PixZap apenas cria cobranças e recebe a notificação de que caiu.</p></details>
-      <details><summary data-i18n="faq5_q">Quanto tempo leva para configurar?</summary><p data-i18n="faq5_a">Minutos: você autoriza seu número, conecta a conta do provedor de pagamento e já pode mandar o primeiro "cobrar".</p></details>
+      <details><summary data-i18n="faq1_q">Preciso trocar de banco?</summary><p data-i18n="faq1_a">Não. Você abre uma conta gratuita num provedor de pagamento (Asaas ou Mercado Pago) e o dinheiro cai lá, na sua conta. O PixZap nunca toca no seu dinheiro: ele cria a cobrança e escuta a confirmação.</p></details>
+      <details><summary data-i18n="faq2_q">Funciona com o meu número de sempre?</summary><p data-i18n="faq2_a">Sim. Você conversa com o bot do seu número atual. O bot é que roda num número próprio, pela API oficial da Meta, sem app paralelo que arrisca banir sua conta.</p></details>
+      <details><summary data-i18n="faq3_q">E se o cliente pagar valor errado?</summary><p data-i18n="faq3_a">A cobrança não é confirmada. Você recebe um alerta mostrando o valor esperado e o que caiu, e decide o que fazer antes de entregar.</p></details>
+      <details><summary data-i18n="faq4_q">Vocês seguram meu dinheiro?</summary><p data-i18n="faq4_a">Nunca. O pagamento vai direto do seu cliente para a sua conta no provedor. Se o PixZap sumir amanhã, seu dinheiro continua onde sempre esteve: com você.</p></details>
+      <details><summary data-i18n="faq5_q">Quanto tempo leva para começar?</summary><p data-i18n="faq5_a">Uns 10 minutos: autoriza seu número, conecta a conta do provedor de pagamento e manda o primeiro "cobrar". A primeira confirmação automática costuma convencer sozinha.</p></details>
     </div>
   </div>
 </section>
 
 <section class="final" id="comecar">
   <div class="wrap reveal">
-    <h2 data-i18n="final_h2">Pare de conferir. Volte a vender.</h2>
-    <p data-i18n="final_p">Comece grátis hoje — a primeira confirmação automática muda tudo.</p>
-    <a class="cta" href="https://wa.me/5500000000000?text=Quero%20usar%20o%20PixZap" data-i18n="final_cta">Começar agora no WhatsApp →</a>
-    <div class="cta-note" data-i18n="final_note">Sem cartão • Sem instalação • Seu dinheiro nunca passa por nós</div>
+    <h2 data-i18n="final_h2">Teste na sua próxima venda</h2>
+    <p data-i18n="final_p">Configura hoje, cobra hoje. Se não gostar, cancela com uma mensagem.</p>
+    <a class="cta" href="https://wa.me/5500000000000?text=Quero%20usar%20o%20PixZap" data-i18n="final_cta">Chamar no WhatsApp</a>
+    <div class="cta-note" data-i18n="final_note">Sem cartão. Sem instalar nada. Seu dinheiro nunca passa pela gente.</div>
   </div>
 </section>
 
 <footer>
   <div class="wrap foot">
-    <span>Pix<strong style="color:var(--pix)">Zap</strong> 💸 — <span data-i18n="foot_tag">screenshot não é comprovante.</span></span>
+    <span>Pix<strong style="color:var(--pix)">Zap</strong> &middot; <span data-i18n="foot_tag">print não é comprovante.</span></span>
     <span class="mono">© 2026</span>
   </div>
 </footer>
@@ -362,161 +339,212 @@ footer { padding: 34px 0 44px; border-top: 1px solid var(--line); }
 <script>
 const I18N = {
   pt: {
-    nav_cta: "Começar",
-    hero_eyebrow: "Para quem vende pelo WhatsApp",
-    hero_h1a: "O Pix caiu? A gente avisa.",
+    nav_cta: "Quero testar",
+    hero_eyebrow: "Feito para quem vende no WhatsApp",
+    hero_h1a: "O Pix caiu? A gente te avisa.",
     hero_h1b: "Conferir extrato",
     hero_h1c: "nunca mais.",
-    hero_lead: "O PixZap gera a cobrança dentro do chat e só confirma quando o dinheiro cai de verdade — direto do banco, exato ao centavo. Screenshot deixa de valer como comprovante.",
-    hero_cta: "Começar grátis no WhatsApp →",
-    hero_note: "Sem cartão de crédito • Configuração em minutos • Cancele quando quiser",
-    chip1: "✓ Conciliação ao centavo", chip2: "✓ API oficial do WhatsApp", chip3: "✓ Asaas & Mercado Pago",
+    hero_lead: "Você manda \"cobrar 150 João\" aqui no chat. O bot cria o Pix, o cliente paga e, quando o dinheiro entra de verdade na sua conta, você recebe o aviso na hora. Print de comprovante deixa de valer.",
+    hero_cta: "Começar grátis no WhatsApp",
+    hero_note: "Grátis para começar. Sem cartão. Pronto em 10 minutos.",
+    chip1: "Confere ao centavo", chip2: "API oficial do WhatsApp", chip3: "Seu dinheiro não passa pela gente",
     phone_status: "online",
-    prob_eyebrow: "O problema", prob_stamp: "FALSO",
-    prob_h2: "O golpe do comprovante falso está comendo o seu lucro",
-    prob_p: "Todo dia, vendedores entregam pedidos confiando num print — e o dinheiro nunca cai. E mesmo quando não há golpe, conferir o extrato na mão consome horas da sua semana.",
-    prob1_h: "O print parece real", prob1_p: "Editar um comprovante leva 2 minutos em qualquer app. A olho nu, é impossível ter certeza.",
-    prob2_h: "Conferir na mão não escala", prob2_p: "Abrir o app do banco, achar a transferência, casar com o pedido... a cada venda. Todo santo dia.",
-    prob3_h: "Entregou sem cair, já era", prob3_p: "Produto na mão do cliente e o \"pagamento\" nunca compensa. O prejuízo é todo seu.",
-    how_eyebrow: "Como funciona", how_h2: "Três mensagens. Zero conferência.",
-    step1_h: "Cobre dentro do chat", step1_p: "Mande \"cobrar\" com o valor e uma descrição. O bot gera o Pix copia-e-cola na hora.", step1_ex: "cobrar 150,00 João pedido 12",
-    step2_h: "O cliente paga", step2_p: "Encaminhe o código para o cliente. Ele paga no banco que preferir, como qualquer Pix.",
-    step3_h: "Confirmação automática", step3_p: "Quando o dinheiro cai, o banco nos avisa e você recebe a confirmação no chat. Pode liberar o pedido.", step3_ex: "✅ Pix de R$ 150,00 confirmado!",
-    seg_eyebrow: "Segurança em primeiro lugar", seg_h2: "Feito para não ser enganado",
-    seg1_h: "Só o banco confirma", seg1_p: "A confirmação vem por webhook autenticado do provedor de pagamento — nunca de mensagem ou imagem.",
-    seg2_h: "Exato ao centavo", seg2_p: "Pagou R$ 149,99 numa cobrança de R$ 150,00? A cobrança segue pendente e você é alertado.",
-    seg3_h: "Sem confirmação duplicada", seg3_p: "O mesmo pagamento nunca confirma dois pedidos — idempotência garantida em banco de dados.",
-    seg4_h: "Só você comanda", seg4_p: "Apenas números autorizados falam com o bot. Qualquer outro é ignorado em silêncio.",
-    seg5_h: "Painel sem senha", seg5_p: "Peça \"painel\" no chat e receba um link mágico com suas métricas: recebido hoje, semana, pendências.",
-    seg6_h: "Multi-idiomas", seg6_p: "Português, inglês e espanhol — pronto para atender e crescer além do Brasil.",
-    preco_eyebrow: "Preço de lançamento", preco_h2: "Paga-se sozinho no primeiro golpe evitado",
-    p1_nome: "Começando", p1_per: "/mês", p1_f1: "20 confirmações por mês", p1_f2: "1 número autorizado", p1_f3: "Alertas de valor divergente", p1_f4: "Resumo diário no chat", p1_cta: "Testar grátis",
-    p2_tag: "Mais popular", p2_nome: "Profissional", p2_per: "/mês", p2_f1: "Confirmações ilimitadas", p2_f2: "Até 3 números da equipe", p2_f3: "Painel de métricas via link mágico", p2_f4: "Suporte prioritário no WhatsApp", p2_f5: "Exportação para planilha", p2_cta: "Assinar agora",
-    faq_h2: "Perguntas de quem vende de verdade",
-    faq1_q: "Preciso trocar de banco?", faq1_a: "Não. Você cria uma conta gratuita num provedor de pagamento (Asaas ou Mercado Pago), que gera as cobranças Pix. O dinheiro é seu, na sua conta — o PixZap só escuta a confirmação.",
-    faq2_q: "Funciona com o meu número atual de WhatsApp?", faq2_a: "O bot usa um número dedicado via API oficial da Meta (nada de apps paralelos que derrubam sua conta). Você conversa com ele do seu número de sempre.",
-    faq3_q: "E se o cliente pagar um valor diferente?", faq3_a: "A cobrança NÃO é confirmada. Você recebe um alerta com o valor esperado e o recebido, e decide o que fazer antes de entregar.",
-    faq4_q: "O PixZap toca no meu dinheiro?", faq4_a: "Nunca. O pagamento vai direto do seu cliente para a sua conta no provedor. O PixZap apenas cria cobranças e recebe a notificação de que caiu.",
-    faq5_q: "Quanto tempo leva para configurar?", faq5_a: "Minutos: você autoriza seu número, conecta a conta do provedor de pagamento e já pode mandar o primeiro \"cobrar\".",
-    final_h2: "Pare de conferir. Volte a vender.",
-    final_p: "Comece grátis hoje — a primeira confirmação automática muda tudo.",
-    final_cta: "Começar agora no WhatsApp →",
-    final_note: "Sem cartão • Sem instalação • Seu dinheiro nunca passa por nós",
-    foot_tag: "screenshot não é comprovante.",
+    prob_eyebrow: "Você conhece essa rotina", prob_stamp: "FALSO",
+    prob_h2: "O golpe do comprovante falso existe porque conferir dá trabalho",
+    prob_p: "Cliente manda o print. Você abre o app do banco, procura a transferência, confere o valor, volta pro chat e libera o pedido. Agora multiplica isso por todas as vendas do dia. Num dia corrido, alguém entrega sem conferir. É exatamente aí que o golpista trabalha.",
+    prob1_h: "O print engana mesmo", prob1_p: "Tem app que gera comprovante falso pronto, com banco, valor e horário. De tão bem feito, nem quem trabalha em banco pega de primeira.",
+    prob2_h: "Seu tempo vale mais", prob2_p: "Meia hora por dia conferindo extrato vira 15 horas no mês. É um dia e meio de trabalho só apertando F5 no app do banco.",
+    prob3_h: "Entregou, perdeu", prob3_p: "Se o produto saiu e o dinheiro não caiu, não tem a quem recorrer. O prejuízo é seu e a mercadoria já era.",
+    how_eyebrow: "Como funciona", how_h2: "Do pedido ao dinheiro na conta, sem sair do chat",
+    step1_h: "Você cobra no chat", step1_p: "Manda o valor e o nome do pedido. O bot responde na hora com o código de pagamento pronto para encaminhar.", step1_ex: "cobrar 150,00 João pedido 12",
+    step2_h: "O cliente paga como sempre", step2_p: "Ele recebe o Pix copia-e-cola e paga pelo banco que usa todo dia. Nada muda para o seu cliente.",
+    step3_h: "O banco confirma, você entrega", step3_p: "Quando o dinheiro cai, o aviso chega no seu chat em segundos. Sem print, sem extrato, sem dúvida.", step3_ex: "Pix de R$ 150,00 confirmado. Pode liberar!",
+    seg_eyebrow: "Por dentro", seg_h2: "Construído para não ser enganado",
+    seg1_h: "Quem confirma é o banco", seg1_p: "O aviso de pagamento vem do provedor de pagamento, autenticado. Mensagem de cliente não confirma nada.",
+    seg2_h: "Centavo é centavo", seg2_p: "Cobrou R$ 150,00 e caiu R$ 149,99? A cobrança continua pendente e você recebe um alerta na hora.",
+    seg3_h: "Nada confirma duas vezes", seg3_p: "O mesmo pagamento nunca libera dois pedidos, mesmo que o banco envie o aviso repetido.",
+    seg4_h: "Só você dá ordens", seg4_p: "O bot só obedece aos números que você autorizou. Estranho que escrever é ignorado, sem resposta.",
+    seg5_h: "Suas métricas, sem senha", seg5_p: "Escreva \"painel\" e receba um link que abre suas vendas do dia e da semana. O link expira sozinho em 24 horas.",
+    seg6_h: "Saldo e repasses no chat", seg6_p: "Consulte o saldo e mande transferências com código de confirmação e limite diário que você define.",
+    preco_eyebrow: "Preço de lançamento", preco_h2: "Um golpe evitado paga mais de um ano disso aqui",
+    p1_nome: "Começando", p1_per: "/mês", p1_f1: "20 confirmações por mês", p1_f2: "1 número autorizado", p1_f3: "Alerta de valor errado", p1_f4: "Resumo do dia no chat", p1_cta: "Testar grátis",
+    p2_tag: "Recomendado", p2_nome: "Profissional", p2_per: "/mês", p2_f1: "Confirmações sem limite", p2_f2: "Até 3 números da equipe", p2_f3: "Painel de métricas", p2_f4: "Saldo e transferências no chat", p2_f5: "Suporte com gente de verdade", p2_cta: "Assinar agora",
+    faq_h2: "O que todo mundo pergunta antes de assinar",
+    faq1_q: "Preciso trocar de banco?", faq1_a: "Não. Você abre uma conta gratuita num provedor de pagamento (Asaas ou Mercado Pago) e o dinheiro cai lá, na sua conta. O PixZap nunca toca no seu dinheiro: ele cria a cobrança e escuta a confirmação.",
+    faq2_q: "Funciona com o meu número de sempre?", faq2_a: "Sim. Você conversa com o bot do seu número atual. O bot é que roda num número próprio, pela API oficial da Meta, sem app paralelo que arrisca banir sua conta.",
+    faq3_q: "E se o cliente pagar valor errado?", faq3_a: "A cobrança não é confirmada. Você recebe um alerta mostrando o valor esperado e o que caiu, e decide o que fazer antes de entregar.",
+    faq4_q: "Vocês seguram meu dinheiro?", faq4_a: "Nunca. O pagamento vai direto do seu cliente para a sua conta no provedor. Se o PixZap sumir amanhã, seu dinheiro continua onde sempre esteve: com você.",
+    faq5_q: "Quanto tempo leva para começar?", faq5_a: "Uns 10 minutos: autoriza seu número, conecta a conta do provedor de pagamento e manda o primeiro \"cobrar\". A primeira confirmação automática costuma convencer sozinha.",
+    final_h2: "Teste na sua próxima venda",
+    final_p: "Configura hoje, cobra hoje. Se não gostar, cancela com uma mensagem.",
+    final_cta: "Chamar no WhatsApp",
+    final_note: "Sem cartão. Sem instalar nada. Seu dinheiro nunca passa pela gente.",
+    foot_tag: "print não é comprovante.",
     chat: [
       { who: "me", text: "cobrar 150,00 João pedido 12" },
-      { who: "bot", text: "✅ Cobrança #12 • R$ 150,00 • João pedido 12 criada. Encaminhe para o cliente:", code: "00020126580014br.gov.bcb.pix2536...5802BR" },
-      { who: "bot", text: "✅ Pix de R$ 150,00 de Maria confirmado! Cobrança #12 está PAGA. Pode liberar o pedido. 🎉", confirm: true },
-      { who: "me", text: "painel" },
-      { who: "bot", text: "🔐 Seu painel: pixzap.app/painel?token=•••• (válido por 24h)" }
+      { who: "bot", text: "Cobrança #12 criada: R$ 150,00, João pedido 12. Encaminhe para o cliente:", code: "00020126580014br.gov.bcb.pix2536...5802BR" },
+      { who: "bot", text: "✅ Pix de R$ 150,00 de Maria confirmado! Cobrança #12 PAGA. Pode liberar o pedido.", confirm: true },
+      { who: "me", text: "saldo" },
+      { who: "bot", text: "💰 Saldo disponível: R$ 990,00" }
     ]
   },
   en: {
-    nav_cta: "Get started",
-    hero_eyebrow: "For everyone selling on WhatsApp",
-    hero_h1a: "Payment landed? We tell you.",
+    nav_cta: "Try it",
+    hero_eyebrow: "Built for people who sell on WhatsApp",
+    hero_h1a: "Money landed? We tell you.",
     hero_h1b: "Checking bank apps", hero_h1c: "never again.",
-    hero_lead: "PixZap creates the charge inside the chat and only confirms when the money actually lands — straight from the bank, exact to the cent. Screenshots stop counting as proof.",
-    hero_cta: "Start free on WhatsApp →",
-    hero_note: "No credit card • Minutes to set up • Cancel anytime",
-    chip1: "✓ Reconciled to the cent", chip2: "✓ Official WhatsApp API", chip3: "✓ Asaas & Mercado Pago",
+    hero_lead: "Type \"cobrar 150 John\" in the chat. The bot creates the payment request, your customer pays, and the second the money actually lands in your account you get the alert. Screenshots stop counting as proof.",
+    hero_cta: "Start free on WhatsApp",
+    hero_note: "Free to start. No card. Ready in 10 minutes.",
+    chip1: "Checks to the cent", chip2: "Official WhatsApp API", chip3: "Your money never touches us",
     phone_status: "online",
-    prob_eyebrow: "The problem", prob_stamp: "FAKE",
-    prob_h2: "Fake payment receipts are eating your profit",
-    prob_p: "Every day sellers ship orders trusting a screenshot — and the money never arrives. Even without fraud, checking statements by hand burns hours of your week.",
-    prob1_h: "The screenshot looks real", prob1_p: "Editing a receipt takes 2 minutes in any app. With the naked eye, you can never be sure.",
-    prob2_h: "Manual checking doesn't scale", prob2_p: "Open the bank app, find the transfer, match it to the order... for every sale. Every single day.",
-    prob3_h: "Shipped before it landed? Gone.", prob3_p: "Product in the customer's hands and the \"payment\" never clears. The loss is all yours.",
-    how_eyebrow: "How it works", how_h2: "Three messages. Zero checking.",
-    step1_h: "Charge inside the chat", step1_p: "Send \"cobrar\" with the amount and a description. The bot creates the Pix code instantly.", step1_ex: "cobrar 150.00 John order 12",
-    step2_h: "Your customer pays", step2_p: "Forward the code. They pay from any bank, like any Pix payment.",
-    step3_h: "Automatic confirmation", step3_p: "When the money lands, the bank notifies us and you get the confirmation in the chat. Release the order.", step3_ex: "✅ Pix of R$ 150.00 confirmed!",
-    seg_eyebrow: "Security first", seg_h2: "Built to not be fooled",
-    seg1_h: "Only the bank confirms", seg1_p: "Confirmation comes from the payment provider's authenticated webhook — never from a message or image.",
-    seg2_h: "Exact to the cent", seg2_p: "Paid R$ 149.99 on a R$ 150.00 charge? It stays pending and you get alerted.",
-    seg3_h: "No double confirmation", seg3_p: "The same payment never confirms two orders — idempotency enforced at the database level.",
-    seg4_h: "Only you are in command", seg4_p: "Only allowlisted numbers can talk to the bot. Everyone else is silently ignored.",
-    seg5_h: "Passwordless dashboard", seg5_p: "Ask for \"painel\" in the chat and get a magic link with your metrics: today, this week, pending.",
-    seg6_h: "Multi-language", seg6_p: "Portuguese, English and Spanish — ready to grow beyond Brazil.",
-    preco_eyebrow: "Launch pricing", preco_h2: "Pays for itself on the first scam avoided",
-    p1_nome: "Starter", p1_per: "/month", p1_f1: "20 confirmations per month", p1_f2: "1 authorized number", p1_f3: "Amount-mismatch alerts", p1_f4: "Daily summary in the chat", p1_cta: "Try for free",
-    p2_tag: "Most popular", p2_nome: "Professional", p2_per: "/month", p2_f1: "Unlimited confirmations", p2_f2: "Up to 3 team numbers", p2_f3: "Metrics dashboard via magic link", p2_f4: "Priority WhatsApp support", p2_f5: "Spreadsheet export", p2_cta: "Subscribe now",
-    faq_h2: "Questions from real sellers",
-    faq1_q: "Do I need to switch banks?", faq1_a: "No. You create a free account at a payment provider (Asaas or Mercado Pago) that issues the Pix charges. The money is yours, in your account — PixZap only listens for the confirmation.",
-    faq2_q: "Does it work with my current WhatsApp number?", faq2_a: "The bot runs on a dedicated number via Meta's official API (no shady parallel apps that get your account banned). You talk to it from your usual number.",
-    faq3_q: "What if the customer pays a different amount?", faq3_a: "The charge is NOT confirmed. You get an alert with the expected and received amounts and decide before shipping.",
-    faq4_q: "Does PixZap touch my money?", faq4_a: "Never. Payment goes straight from your customer to your provider account. PixZap only creates charges and receives the landing notification.",
-    faq5_q: "How long does setup take?", faq5_a: "Minutes: authorize your number, connect your payment provider account, and send your first \"cobrar\".",
-    final_h2: "Stop checking. Get back to selling.",
-    final_p: "Start free today — the first automatic confirmation changes everything.",
-    final_cta: "Start now on WhatsApp →",
-    final_note: "No card • No install • Your money never passes through us",
+    prob_eyebrow: "You know this routine", prob_stamp: "FAKE",
+    prob_h2: "Fake receipts work because checking is tedious",
+    prob_p: "The buyer sends a screenshot. You open your bank app, hunt for the transfer, check the amount, go back to the chat and release the order. Now multiply that by every sale of the day. On a busy day, someone ships without checking. That is exactly when the scammer strikes.",
+    prob1_h: "The screenshot really fools you", prob1_p: "There are apps that generate fake receipts with the right bank, amount and time. Even bank staff miss them at first glance.",
+    prob2_h: "Your time is worth more", prob2_p: "Half an hour a day checking statements is 15 hours a month. That is almost two full workdays refreshing a bank app.",
+    prob3_h: "Shipped means gone", prob3_p: "If the product left and the money never arrived, there is no one to complain to. The loss is yours and the goods are gone.",
+    how_eyebrow: "How it works", how_h2: "From order to money in the bank, without leaving the chat",
+    step1_h: "You charge in the chat", step1_p: "Send the amount and the order name. The bot replies instantly with a payment code ready to forward.", step1_ex: "cobrar 150.00 John order 12",
+    step2_h: "Your customer pays as usual", step2_p: "They get the payment code and pay from the bank they already use. Nothing changes for your customer.",
+    step3_h: "The bank confirms, you ship", step3_p: "When the money lands, the alert hits your chat in seconds. No screenshot, no statement, no doubt.", step3_ex: "Payment of $150.00 confirmed. Good to ship!",
+    seg_eyebrow: "Under the hood", seg_h2: "Built to not be fooled",
+    seg1_h: "The bank does the confirming", seg1_p: "The payment notice comes from the payment provider, authenticated. A customer message confirms nothing.",
+    seg2_h: "A cent is a cent", seg2_p: "Charged $150.00 and $149.99 arrived? The charge stays pending and you get an instant alert.",
+    seg3_h: "Nothing confirms twice", seg3_p: "The same payment never releases two orders, even if the bank sends the notice again.",
+    seg4_h: "Only you give orders", seg4_p: "The bot only obeys numbers you authorized. Strangers who write are ignored, no reply.",
+    seg5_h: "Your numbers, no password", seg5_p: "Type \"painel\" and get a link that opens your sales for the day and the week. The link expires by itself in 24 hours.",
+    seg6_h: "Balance and payouts in chat", seg6_p: "Check your balance and send transfers with a confirmation code and a daily limit you define.",
+    preco_eyebrow: "Launch pricing", preco_h2: "One avoided scam pays for over a year of this",
+    p1_nome: "Starter", p1_per: "/month", p1_f1: "20 confirmations per month", p1_f2: "1 authorized number", p1_f3: "Wrong-amount alerts", p1_f4: "Daily summary in chat", p1_cta: "Try for free",
+    p2_tag: "Recommended", p2_nome: "Professional", p2_per: "/month", p2_f1: "Unlimited confirmations", p2_f2: "Up to 3 team numbers", p2_f3: "Metrics dashboard", p2_f4: "Balance and transfers in chat", p2_f5: "Support from actual humans", p2_cta: "Subscribe now",
+    faq_h2: "What everyone asks before subscribing",
+    faq1_q: "Do I need to switch banks?", faq1_a: "No. You open a free account at a payment provider and the money lands there, in your account. PixZap never touches your money: it creates the charge and listens for the confirmation.",
+    faq2_q: "Does it work with my current number?", faq2_a: "Yes. You talk to the bot from your usual number. The bot runs on its own number through Meta's official API, no shady parallel app that risks a ban.",
+    faq3_q: "What if the customer pays the wrong amount?", faq3_a: "The charge is not confirmed. You get an alert showing the expected amount and what arrived, and you decide before shipping.",
+    faq4_q: "Do you hold my money?", faq4_a: "Never. Payment goes straight from your customer to your provider account. If PixZap disappeared tomorrow, your money stays exactly where it always was: with you.",
+    faq5_q: "How long to get started?", faq5_a: "About 10 minutes: authorize your number, connect your payment provider account and send your first \"cobrar\". The first automatic confirmation usually sells itself.",
+    final_h2: "Try it on your next sale",
+    final_p: "Set up today, charge today. If you don't like it, cancel with one message.",
+    final_cta: "Message us on WhatsApp",
+    final_note: "No card. Nothing to install. Your money never passes through us.",
     foot_tag: "a screenshot is not a receipt.",
     chat: [
       { who: "me", text: "cobrar 150.00 John order 12" },
-      { who: "bot", text: "✅ Charge #12 • R$ 150.00 • John order 12 created. Forward to your customer:", code: "00020126580014br.gov.bcb.pix2536...5802BR" },
-      { who: "bot", text: "✅ Pix of R$ 150.00 from Mary confirmed! Charge #12 is PAID. You can release the order. 🎉", confirm: true },
-      { who: "me", text: "painel" },
-      { who: "bot", text: "🔐 Your dashboard: pixzap.app/painel?token=•••• (valid for 24h)" }
+      { who: "bot", text: "Charge #12 created: $150.00, John order 12. Forward it to your customer:", code: "PAY-CODE-8f3a...b2" },
+      { who: "bot", text: "✅ Payment of $150.00 from Mary confirmed! Charge #12 PAID. Good to ship.", confirm: true },
+      { who: "me", text: "saldo" },
+      { who: "bot", text: "💰 Available balance: $990.00" }
     ]
   },
   es: {
-    nav_cta: "Empezar",
-    hero_eyebrow: "Para quien vende por WhatsApp",
-    hero_h1a: "¿Cayó el Pix? Te avisamos.",
+    nav_cta: "Probar",
+    hero_eyebrow: "Hecho para quien vende por WhatsApp",
+    hero_h1a: "¿Cayó el pago? Te avisamos.",
     hero_h1b: "Revisar el banco", hero_h1c: "nunca más.",
-    hero_lead: "PixZap genera el cobro dentro del chat y solo confirma cuando el dinero cae de verdad — directo del banco, exacto al centavo. La captura de pantalla deja de valer como comprobante.",
-    hero_cta: "Empezar gratis en WhatsApp →",
-    hero_note: "Sin tarjeta • Configuración en minutos • Cancela cuando quieras",
-    chip1: "✓ Conciliación al centavo", chip2: "✓ API oficial de WhatsApp", chip3: "✓ Asaas & Mercado Pago",
+    hero_lead: "Escribes \"cobrar 150 Juan\" en el chat. El bot crea el cobro, tu cliente paga y, apenas el dinero entra de verdad en tu cuenta, te llega el aviso. La captura de pantalla deja de valer como comprobante.",
+    hero_cta: "Empezar gratis en WhatsApp",
+    hero_note: "Gratis para empezar. Sin tarjeta. Listo en 10 minutos.",
+    chip1: "Verifica al centavo", chip2: "API oficial de WhatsApp", chip3: "Tu dinero no pasa por nosotros",
     phone_status: "en línea",
-    prob_eyebrow: "El problema", prob_stamp: "FALSO",
-    prob_h2: "El fraude del comprobante falso se come tu ganancia",
-    prob_p: "Cada día, vendedores entregan pedidos confiando en una captura — y el dinero nunca llega. Incluso sin fraude, revisar el extracto a mano consume horas de tu semana.",
-    prob1_h: "La captura parece real", prob1_p: "Editar un comprobante toma 2 minutos en cualquier app. A simple vista, es imposible estar seguro.",
-    prob2_h: "Revisar a mano no escala", prob2_p: "Abrir el banco, encontrar la transferencia, cruzarla con el pedido... en cada venta. Todos los días.",
-    prob3_h: "¿Entregaste antes de que cayera?", prob3_p: "Producto en manos del cliente y el \"pago\" nunca se acredita. La pérdida es toda tuya.",
-    how_eyebrow: "Cómo funciona", how_h2: "Tres mensajes. Cero revisión.",
-    step1_h: "Cobra dentro del chat", step1_p: "Envía \"cobrar\" con el valor y una descripción. El bot genera el código Pix al instante.", step1_ex: "cobrar 150,00 Juan pedido 12",
-    step2_h: "El cliente paga", step2_p: "Reenvía el código. Paga desde cualquier banco, como cualquier Pix.",
-    step3_h: "Confirmación automática", step3_p: "Cuando el dinero cae, el banco nos avisa y recibes la confirmación en el chat. Libera el pedido.", step3_ex: "✅ ¡Pix de R$ 150,00 confirmado!",
-    seg_eyebrow: "Seguridad primero", seg_h2: "Hecho para no ser engañado",
-    seg1_h: "Solo el banco confirma", seg1_p: "La confirmación llega por webhook autenticado del proveedor de pagos — nunca por mensaje o imagen.",
-    seg2_h: "Exacto al centavo", seg2_p: "¿Pagó R$ 149,99 en un cobro de R$ 150,00? Sigue pendiente y recibes una alerta.",
-    seg3_h: "Sin confirmación duplicada", seg3_p: "El mismo pago nunca confirma dos pedidos — idempotencia garantizada en la base de datos.",
-    seg4_h: "Solo tú tienes el control", seg4_p: "Solo números autorizados hablan con el bot. Cualquier otro es ignorado en silencio.",
-    seg5_h: "Panel sin contraseña", seg5_p: "Pide \"painel\" en el chat y recibe un enlace mágico con tus métricas: hoy, semana, pendientes.",
-    seg6_h: "Multi-idioma", seg6_p: "Portugués, inglés y español — listo para crecer más allá de Brasil.",
-    preco_eyebrow: "Precio de lanzamiento", preco_h2: "Se paga solo con el primer fraude evitado",
-    p1_nome: "Empezando", p1_per: "/mes", p1_f1: "20 confirmaciones al mes", p1_f2: "1 número autorizado", p1_f3: "Alertas de valor divergente", p1_f4: "Resumen diario en el chat", p1_cta: "Probar gratis",
-    p2_tag: "Más popular", p2_nome: "Profesional", p2_per: "/mes", p2_f1: "Confirmaciones ilimitadas", p2_f2: "Hasta 3 números del equipo", p2_f3: "Panel de métricas por enlace mágico", p2_f4: "Soporte prioritario por WhatsApp", p2_f5: "Exportación a planilla", p2_cta: "Suscribirse",
-    faq_h2: "Preguntas de quien vende de verdad",
-    faq1_q: "¿Necesito cambiar de banco?", faq1_a: "No. Creas una cuenta gratuita en un proveedor de pagos (Asaas o Mercado Pago), que emite los cobros Pix. El dinero es tuyo, en tu cuenta — PixZap solo escucha la confirmación.",
-    faq2_q: "¿Funciona con mi número actual de WhatsApp?", faq2_a: "El bot usa un número dedicado vía API oficial de Meta (nada de apps paralelas que hacen banear tu cuenta). Le hablas desde tu número de siempre.",
-    faq3_q: "¿Y si el cliente paga un valor diferente?", faq3_a: "El cobro NO se confirma. Recibes una alerta con el valor esperado y el recibido, y decides antes de entregar.",
-    faq4_q: "¿PixZap toca mi dinero?", faq4_a: "Nunca. El pago va directo de tu cliente a tu cuenta en el proveedor. PixZap solo crea cobros y recibe la notificación.",
-    faq5_q: "¿Cuánto tarda la configuración?", faq5_a: "Minutos: autorizas tu número, conectas la cuenta del proveedor de pagos y ya puedes enviar tu primer \"cobrar\".",
-    final_h2: "Deja de revisar. Vuelve a vender.",
-    final_p: "Empieza gratis hoy — la primera confirmación automática lo cambia todo.",
-    final_cta: "Empezar ahora en WhatsApp →",
-    final_note: "Sin tarjeta • Sin instalación • Tu dinero nunca pasa por nosotros",
+    prob_eyebrow: "Conoces esta rutina", prob_stamp: "FALSO",
+    prob_h2: "El comprobante falso funciona porque verificar da trabajo",
+    prob_p: "El cliente manda la captura. Abres la app del banco, buscas la transferencia, verificas el monto, vuelves al chat y liberas el pedido. Ahora multiplica eso por todas las ventas del día. En un día ocupado, alguien entrega sin verificar. Justo ahí trabaja el estafador.",
+    prob1_h: "La captura engaña de verdad", prob1_p: "Hay apps que generan comprobantes falsos con banco, monto y hora correctos. Ni la gente del banco los detecta a la primera.",
+    prob2_h: "Tu tiempo vale más", prob2_p: "Media hora al día revisando el banco son 15 horas al mes. Casi dos días de trabajo actualizando una app.",
+    prob3_h: "Entregado, perdido", prob3_p: "Si el producto salió y el dinero nunca llegó, no hay a quién reclamar. La pérdida es tuya y la mercancía ya no vuelve.",
+    how_eyebrow: "Cómo funciona", how_h2: "Del pedido al dinero en tu cuenta, sin salir del chat",
+    step1_h: "Cobras en el chat", step1_p: "Mandas el valor y el nombre del pedido. El bot responde al instante con el código de pago listo para reenviar.", step1_ex: "cobrar 150,00 Juan pedido 12",
+    step2_h: "El cliente paga como siempre", step2_p: "Recibe el código y paga desde el banco que usa todos los días. Nada cambia para tu cliente.",
+    step3_h: "El banco confirma, tú entregas", step3_p: "Cuando el dinero cae, el aviso llega a tu chat en segundos. Sin captura, sin extracto, sin duda.", step3_ex: "Pago de $150.00 confirmado. ¡Puedes entregar!",
+    seg_eyebrow: "Por dentro", seg_h2: "Construido para no ser engañado",
+    seg1_h: "El banco es quien confirma", seg1_p: "El aviso de pago llega del proveedor de pagos, autenticado. Un mensaje del cliente no confirma nada.",
+    seg2_h: "Un centavo es un centavo", seg2_p: "¿Cobraste $150.00 y cayeron $149.99? El cobro sigue pendiente y recibes una alerta al instante.",
+    seg3_h: "Nada se confirma dos veces", seg3_p: "El mismo pago nunca libera dos pedidos, aunque el banco repita el aviso.",
+    seg4_h: "Solo tú das órdenes", seg4_p: "El bot solo obedece a los números que autorizaste. Al desconocido que escribe, lo ignora sin responder.",
+    seg5_h: "Tus números, sin contraseña", seg5_p: "Escribe \"painel\" y recibe un enlace con tus ventas del día y de la semana. El enlace expira solo en 24 horas.",
+    seg6_h: "Saldo y transferencias en el chat", seg6_p: "Consulta el saldo y envía transferencias con código de confirmación y un límite diario que tú defines.",
+    preco_eyebrow: "Precio de lanzamiento", preco_h2: "Una estafa evitada paga más de un año de esto",
+    p1_nome: "Empezando", p1_per: "/mes", p1_f1: "20 confirmaciones al mes", p1_f2: "1 número autorizado", p1_f3: "Alerta de monto equivocado", p1_f4: "Resumen del día en el chat", p1_cta: "Probar gratis",
+    p2_tag: "Recomendado", p2_nome: "Profesional", p2_per: "/mes", p2_f1: "Confirmaciones sin límite", p2_f2: "Hasta 3 números del equipo", p2_f3: "Panel de métricas", p2_f4: "Saldo y transferencias en el chat", p2_f5: "Soporte con personas de verdad", p2_cta: "Suscribirse",
+    faq_h2: "Lo que todos preguntan antes de suscribirse",
+    faq1_q: "¿Necesito cambiar de banco?", faq1_a: "No. Abres una cuenta gratuita en un proveedor de pagos y el dinero cae ahí, en tu cuenta. PixZap nunca toca tu dinero: crea el cobro y escucha la confirmación.",
+    faq2_q: "¿Funciona con mi número de siempre?", faq2_a: "Sí. Le hablas al bot desde tu número actual. El bot corre en un número propio por la API oficial de Meta, sin apps paralelas que arriesgan tu cuenta.",
+    faq3_q: "¿Y si el cliente paga un monto equivocado?", faq3_a: "El cobro no se confirma. Recibes una alerta con el monto esperado y el recibido, y decides antes de entregar.",
+    faq4_q: "¿Retienen mi dinero?", faq4_a: "Nunca. El pago va directo de tu cliente a tu cuenta en el proveedor. Si PixZap desapareciera mañana, tu dinero sigue donde siempre: contigo.",
+    faq5_q: "¿Cuánto tarda en empezar?", faq5_a: "Unos 10 minutos: autorizas tu número, conectas la cuenta del proveedor de pagos y mandas tu primer \"cobrar\". La primera confirmación automática convence sola.",
+    final_h2: "Pruébalo en tu próxima venta",
+    final_p: "Lo configuras hoy, cobras hoy. Si no te gusta, cancelas con un mensaje.",
+    final_cta: "Escríbenos por WhatsApp",
+    final_note: "Sin tarjeta. Sin instalar nada. Tu dinero nunca pasa por nosotros.",
     foot_tag: "una captura no es un comprobante.",
     chat: [
       { who: "me", text: "cobrar 150,00 Juan pedido 12" },
-      { who: "bot", text: "✅ Cobro #12 • R$ 150,00 • Juan pedido 12 creado. Reenvíalo a tu cliente:", code: "00020126580014br.gov.bcb.pix2536...5802BR" },
-      { who: "bot", text: "✅ ¡Pix de R$ 150,00 de María confirmado! El cobro #12 está PAGADO. Puedes liberar el pedido. 🎉", confirm: true },
-      { who: "me", text: "painel" },
-      { who: "bot", text: "🔐 Tu panel: pixzap.app/painel?token=•••• (válido por 24h)" }
+      { who: "bot", text: "Cobro #12 creado: $150.00, Juan pedido 12. Reenvíalo a tu cliente:", code: "PAGO-8f3a...b2" },
+      { who: "bot", text: "✅ ¡Pago de $150.00 de María confirmado! Cobro #12 PAGADO. Puedes entregar.", confirm: true },
+      { who: "me", text: "saldo" },
+      { who: "bot", text: "💰 Saldo disponible: $990.00" }
+    ]
+  },
+  id: {
+    nav_cta: "Coba dulu",
+    hero_eyebrow: "Dibuat untuk yang jualan lewat WhatsApp",
+    hero_h1a: "Uang masuk? Kami kabari.",
+    hero_h1b: "Cek mutasi bank", hero_h1c: "tidak lagi.",
+    hero_lead: "Ketik \"cobrar 150000 Budi\" di chat. Bot membuat tagihan, pembeli membayar, dan begitu uangnya benar-benar masuk ke rekening Anda, notifikasi langsung datang. Bukti transfer palsu jadi tidak mempan.",
+    hero_cta: "Mulai gratis di WhatsApp",
+    hero_note: "Gratis untuk mulai. Tanpa kartu. Siap dalam 10 menit.",
+    chip1: "Cek sampai rupiah terakhir", chip2: "API resmi WhatsApp", chip3: "Uang Anda tidak lewat kami",
+    phone_status: "online",
+    prob_eyebrow: "Anda pasti kenal rutinitas ini", prob_stamp: "PALSU",
+    prob_h2: "Bukti transfer palsu laku karena mengecek itu repot",
+    prob_p: "Pembeli kirim screenshot. Anda buka aplikasi bank, cari transferannya, cocokkan nominal, balik ke chat, baru kirim pesanan. Kalikan dengan semua penjualan hari itu. Di hari sibuk, ada yang terkirim tanpa dicek. Persis di situ penipu bekerja.",
+    prob1_h: "Screenshot memang menipu", prob1_p: "Ada aplikasi pembuat bukti transfer palsu lengkap dengan bank, nominal dan jam. Pegawai bank saja bisa kecolongan.",
+    prob2_h: "Waktu Anda lebih berharga", prob2_p: "Setengah jam sehari mengecek mutasi sama dengan 15 jam sebulan. Hampir dua hari kerja penuh cuma untuk refresh aplikasi bank.",
+    prob3_h: "Terkirim berarti hilang", prob3_p: "Kalau barang sudah jalan dan uang tidak pernah masuk, tidak ada tempat mengadu. Ruginya Anda yang tanggung.",
+    how_eyebrow: "Cara kerjanya", how_h2: "Dari pesanan sampai uang di rekening, tanpa keluar dari chat",
+    step1_h: "Anda menagih di chat", step1_p: "Kirim nominal dan nama pesanan. Bot langsung membalas dengan kode pembayaran yang siap diteruskan.", step1_ex: "cobrar 150.000 Budi pesanan 12",
+    step2_h: "Pembeli bayar seperti biasa", step2_p: "Dia menerima kode pembayaran dan membayar dari bank yang dipakainya sehari-hari. Tidak ada yang berubah untuk pembeli.",
+    step3_h: "Bank konfirmasi, Anda kirim", step3_p: "Begitu uang masuk, notifikasi tiba di chat dalam hitungan detik. Tanpa screenshot, tanpa mutasi, tanpa ragu.", step3_ex: "Pembayaran Rp 150.000 terkonfirmasi. Silakan kirim!",
+    seg_eyebrow: "Di baliknya", seg_h2: "Dibangun supaya tidak bisa dibohongi",
+    seg1_h: "Bank yang mengonfirmasi", seg1_p: "Notifikasi pembayaran datang dari penyedia pembayaran, terautentikasi. Pesan dari pembeli tidak mengonfirmasi apa pun.",
+    seg2_h: "Rupiah harus pas", seg2_p: "Tagihan Rp 150.000 tapi yang masuk Rp 149.900? Tagihan tetap tertunda dan Anda langsung diberi peringatan.",
+    seg3_h: "Tidak ada konfirmasi ganda", seg3_p: "Pembayaran yang sama tidak pernah melepas dua pesanan, meskipun bank mengirim notifikasi berulang.",
+    seg4_h: "Hanya Anda yang memerintah", seg4_p: "Bot hanya menuruti nomor yang Anda izinkan. Orang asing yang menulis diabaikan tanpa balasan.",
+    seg5_h: "Angka Anda, tanpa kata sandi", seg5_p: "Ketik \"painel\" dan terima tautan berisi penjualan hari ini dan minggu ini. Tautannya kedaluwarsa sendiri dalam 24 jam.",
+    seg6_h: "Saldo dan transfer di chat", seg6_p: "Cek saldo dan kirim transfer dengan kode konfirmasi serta batas harian yang Anda tentukan.",
+    preco_eyebrow: "Harga peluncuran", preco_h2: "Satu penipuan yang gagal menutup setahun lebih biaya ini",
+    p1_nome: "Pemula", p1_per: "/bulan", p1_f1: "20 konfirmasi per bulan", p1_f2: "1 nomor terdaftar", p1_f3: "Peringatan nominal salah", p1_f4: "Ringkasan harian di chat", p1_cta: "Coba gratis",
+    p2_tag: "Direkomendasikan", p2_nome: "Profesional", p2_per: "/bulan", p2_f1: "Konfirmasi tanpa batas", p2_f2: "Sampai 3 nomor tim", p2_f3: "Dasbor metrik", p2_f4: "Saldo dan transfer di chat", p2_f5: "Dukungan dari manusia sungguhan", p2_cta: "Berlangganan",
+    faq_h2: "Yang semua orang tanyakan sebelum berlangganan",
+    faq1_q: "Perlu ganti bank?", faq1_a: "Tidak. Anda membuka akun gratis di penyedia pembayaran dan uang masuk ke sana, ke rekening Anda. PixZap tidak pernah menyentuh uang Anda: dia membuat tagihan dan mendengarkan konfirmasinya.",
+    faq2_q: "Bisa pakai nomor WhatsApp saya yang sekarang?", faq2_a: "Bisa. Anda mengobrol dengan bot dari nomor Anda sendiri. Bot berjalan di nomornya sendiri lewat API resmi Meta, tanpa aplikasi tidak resmi yang berisiko kena banned.",
+    faq3_q: "Kalau pembeli bayar nominal yang salah?", faq3_a: "Tagihan tidak dikonfirmasi. Anda menerima peringatan berisi nominal yang seharusnya dan yang masuk, lalu Anda yang memutuskan sebelum mengirim.",
+    faq4_q: "Kalian memegang uang saya?", faq4_a: "Tidak pernah. Pembayaran langsung dari pembeli ke akun Anda di penyedia. Kalau PixZap hilang besok, uang Anda tetap di tempatnya: di Anda.",
+    faq5_q: "Berapa lama untuk mulai?", faq5_a: "Sekitar 10 menit: daftarkan nomor Anda, hubungkan akun penyedia pembayaran, kirim \"cobrar\" pertama. Konfirmasi otomatis pertama biasanya langsung meyakinkan.",
+    final_h2: "Coba di penjualan berikutnya",
+    final_p: "Pasang hari ini, menagih hari ini. Tidak cocok? Batalkan dengan satu pesan.",
+    final_cta: "Chat kami di WhatsApp",
+    final_note: "Tanpa kartu. Tanpa instal apa pun. Uang Anda tidak pernah lewat kami.",
+    foot_tag: "screenshot bukan bukti bayar.",
+    chat: [
+      { who: "me", text: "cobrar 150.000 Budi pesanan 12" },
+      { who: "bot", text: "Tagihan #12 dibuat: Rp 150.000, Budi pesanan 12. Teruskan ke pembeli:", code: "BAYAR-8f3a...b2" },
+      { who: "bot", text: "✅ Pembayaran Rp 150.000 dari Siti terkonfirmasi! Tagihan #12 LUNAS. Silakan kirim.", confirm: true },
+      { who: "me", text: "saldo" },
+      { who: "bot", text: "💰 Saldo tersedia: Rp 990.000" }
     ]
   }
 };
 
-let lang = localStorage.getItem("pixzap-lang") || "pt";
+let lang = "pt";
+try { lang = localStorage.getItem("pixzap-lang") || "pt"; } catch (e) {}
+if (!I18N[lang]) lang = "pt";
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function applyLang(next) {
   lang = next;
-  localStorage.setItem("pixzap-lang", lang);
+  try { localStorage.setItem("pixzap-lang", lang); } catch (e) {}
   document.documentElement.lang = lang === "pt" ? "pt-BR" : lang;
   const dict = I18N[lang];
   document.querySelectorAll("[data-i18n]").forEach(el => {
@@ -530,7 +558,6 @@ function applyLang(next) {
 document.querySelectorAll(".langs button").forEach(b =>
   b.addEventListener("click", () => applyLang(b.dataset.lang)));
 
-/* ── demo de chat em loop ── */
 const chatEl = document.getElementById("chat");
 let chatTimer = null;
 
@@ -545,7 +572,7 @@ function restartChat() {
   clearTimeout(chatTimer);
   chatEl.innerHTML = "";
   const script = I18N[lang].chat;
-  if (reduced) {  // sem animação: mostra a conversa completa, parada
+  if (reduced) {
     script.forEach(m => chatEl.appendChild(buildMsg(m, true)));
     return;
   }
@@ -561,7 +588,7 @@ function restartChat() {
       typing.classList.add("show");
       chatTimer = setTimeout(() => {
         typing.classList.remove("show");
-        chatEl.removeChild(typing);
+        if (typing.parentNode) chatEl.removeChild(typing);
         chatEl.appendChild(buildMsg(m));
         chatTimer = setTimeout(next, m.confirm ? 2400 : 1700);
       }, 1100);
@@ -581,7 +608,6 @@ function buildMsg(m, still) {
   return div;
 }
 
-/* ── reveal on scroll ── */
 const io = new IntersectionObserver(entries => {
   entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
 }, { threshold: .12 });

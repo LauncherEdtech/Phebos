@@ -46,8 +46,12 @@ class PixzapConfig:
     # ignoradas — regra de segurança, nunca enfraquecer.
     seller_numbers: List[str] = field(default_factory=list)
     timezone: str = "America/Sao_Paulo"
-    language: str = "pt"              # idioma das respostas do bot: pt | en | es
+    language: str = "pt"              # idioma das respostas: pt | en | es | id
+    currency: str = "BRL"             # moeda exibida (BRL, MXN, NGN, INR, IDR...)
     public_url: str = ""              # URL pública (https) — habilita o painel web
+    # Limite diário (na moeda, ex.: 2000 = R$ 2.000) para o comando
+    # "transferir". 0 = transferências pelo chat DESATIVADAS (padrão seguro).
+    transfer_daily_limit: int = 0
     port: int = 8000
     admin_token: str = ""             # env: PIXZAP_ADMIN_TOKEN (habilita /admin)
     dashboard_secret: str = ""        # env: PIXZAP_DASHBOARD_SECRET (ou gerado)
@@ -83,7 +87,9 @@ def load_config(path: str | None = None) -> PixzapConfig:
         seller_numbers=[str(n) for n in raw.get("seller_numbers", [])],
         timezone=raw.get("timezone", "America/Sao_Paulo"),
         language=str(raw.get("language", "pt")),
+        currency=str(raw.get("currency", "BRL")).upper(),
         public_url=str(raw.get("public_url", "")),
+        transfer_daily_limit=int(raw.get("transfer_daily_limit", 0)),
         port=int(raw.get("port", 8000)),
         admin_token=os.environ.get("PIXZAP_ADMIN_TOKEN", ""),
         dashboard_secret=_dashboard_secret(),

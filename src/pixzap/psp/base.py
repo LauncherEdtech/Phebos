@@ -17,10 +17,24 @@ class PixCharge:
 
 class PspClient(ABC):
     name: str = "base"
+    supports_transfers: bool = False  # saldo/transferência pelo chat
 
     @abstractmethod
     def create_charge(self, amount_cents: int, description: str) -> PixCharge:
         """Cria uma cobrança Pix e devolve txid + copia-e-cola."""
+
+    def get_balance(self) -> int:
+        """Saldo disponível na conta do PSP, em centavos."""
+        raise NotImplementedError
+
+    def transfer(self, amount_cents: int, pix_key: str,
+                 description: str = "") -> str:
+        """Envia um Pix para a chave informada; devolve o id da transferência.
+
+        Segurança: quem chama é o bot, que já validou allowlist, limite
+        diário e código de confirmação — este método só executa.
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def verify_webhook(self, headers: Mapping[str, str], body: bytes) -> bool:

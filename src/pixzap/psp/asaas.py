@@ -19,6 +19,7 @@ PRODUCTION_URL = "https://api.asaas.com/v3"
 
 class AsaasPsp(PspClient):
     name = "asaas"
+    supports_transfers = True  # beta: validar no sandbox
 
     def __init__(self, api_key: str, webhook_token: str, sandbox: bool = True,
                  pix_key: str = ""):
@@ -47,6 +48,20 @@ class AsaasPsp(PspClient):
         resp.raise_for_status()
         data = resp.json()
         return PixCharge(txid=str(data["id"]), copy_paste_code=data["payload"])
+
+    def get_balance(self) -> int:
+        resp = requests.get(f"{self.base_url}/finance/balance",
+                            headers=self._headers(), timeout=30)
+        resp.raise_for_status()
+        return round(float(resp.json()["balance"]) * 100)
+
+    def transfer(self, amount_cents: int, pix_key: str, description: str = "") -> str:
+        payload = {"value": amount_cents / 100, "pixAddressKey": pix_key,
+                   "operationType": "PIX", "description": description or "PixZap"}
+        resp = requests.post(f"{self.base_url}/transfers", json=payload,
+                             headers=self._headers(), timeout=30)
+        resp.raise_for_status()
+        return str(resp.json()["id"])
 
     def verify_webhook(self, headers: Mapping[str, str], body: bytes) -> bool:
         return headers.get("asaas-access-token", "") == self.webhook_token

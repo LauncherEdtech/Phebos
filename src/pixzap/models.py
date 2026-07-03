@@ -4,6 +4,7 @@ Todo valor monetário é armazenado em **centavos (int)** — nunca float —
 para que a conciliação seja exata ao centavo.
 """
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -29,29 +30,83 @@ def utcnow_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def format_brl(amount_cents: int) -> str:
-    """Formata centavos como moeda brasileira: 150050 → 'R$ 1.500,50'."""
+# Moedas suportadas: símbolo, separador decimal, separador de milhar,
+# casas decimais exibidas. A moeda ativa é definida no config (currency).
+CURRENCIES: dict[str, tuple[str, str, str, int]] = {
+    "BRL": ("R$", ",", ".", 2),    # Brasil (Pix)
+    "MXN": ("$", ".", ",", 2),     # México (SPEI)
+    "ARS": ("$", ",", ".", 2),     # Argentina
+    "COP": ("$", ",", ".", 0),     # Colômbia
+    "NGN": ("₦", ".", ",", 2),     # Nigéria (transferência bancária)
+    "KES": ("KSh", ".", ",", 2),   # Quênia (M-Pesa)
+    "INR": ("₹", ".", ",", 2),     # Índia (UPI)
+    "IDR": ("Rp", ",", ".", 0),    # Indonésia (QRIS)
+    "USD": ("$", ".", ",", 2),
+}
+_active_currency = ["BRL"]
+
+_MONEY_CHARS = re.compile(r"^[\d.,]+$")
+_CURRENCY_PREFIXES = ("R$", "RP", "KSH", "₦", "₹", "$")
+
+
+def set_currency(code: str) -> None:
+    code = code.upper()
+    if code not in CURRENCIES:
+        raise ValueError(f"Moeda não suportada: {code} (opções: {', '.join(CURRENCIES)})")
+    _active_currency[0] = code
+
+
+def format_money(amount_cents: int) -> str:
+    """Formata centavos na moeda ativa: 150050 em BRL → 'R$ 1.500,50'."""
+    symbol, dec_sep, thou_sep, decimals = CURRENCIES[_active_currency[0]]
     sign = "-" if amount_cents < 0 else ""
     cents = abs(amount_cents)
-    reais, resto = divmod(cents, 100)
-    thousands = f"{reais:,}".replace(",", ".")  # separador de milhar pt-BR
-    return f"{sign}R$ {thousands},{resto:02d}"
+    whole, frac = divmod(cents, 100)
+    grouped = f"{whole:,}".replace(",", "\x00").replace("\x00", thou_sep)
+    if decimals == 0:
+        return f"{sign}{symbol} {grouped}"
+    return f"{sign}{symbol} {grouped}{dec_sep}{frac:02d}"
+
+
+# Alias histórico — todo o código formata pela moeda ativa.
+format_brl = format_money
 
 
 def parse_brl(text: str) -> Optional[int]:
-    """Converte texto de valor em centavos: '150', '150,50', 'R$ 1.500,50'.
+    """Converte texto de valor em centavos, aceitando os dois estilos:
+    '150', '150,50', 'R$ 1.500,50' (pt) e '150.50', '1,500.50' (en).
 
-    Retorna None se não for um valor válido.
+    Regra: o ÚLTIMO separador seguido de 1-2 dígitos é o decimal; separador
+    seguido de 3 dígitos é milhar. Retorna None se não for um valor válido.
     """
-    cleaned = text.strip().upper().removeprefix("R$").strip()
-    cleaned = cleaned.replace(".", "").replace(",", ".")
-    try:
-        value = float(cleaned)
-    except ValueError:
+    cleaned = text.strip().upper()
+    for prefix in _CURRENCY_PREFIXES:
+        cleaned = cleaned.removeprefix(prefix).strip()
+    if not cleaned or not _MONEY_CHARS.match(cleaned):
         return None
-    if value <= 0 or value > 1_000_000_00:  # limite de sanidade: R$ 100 milhões
+    sep_positions = [i for i, ch in enumerate(cleaned) if ch in ".,"]
+    if sep_positions:
+        last = sep_positions[-1]
+        tail = cleaned[last + 1:]
+        if 1 <= len(tail) <= 2:            # decimal: 150,5 / 150.50
+            int_part = re.sub(r"[.,]", "", cleaned[:last]) or "0"
+            frac = tail.ljust(2, "0")
+        elif len(tail) == 3:               # milhar: 1.500 / 1,500
+            int_part = re.sub(r"[.,]", "", cleaned)
+            frac = "00"
+        else:
+            return None
+        if not (int_part.isdigit() and frac.isdigit()):
+            return None
+        value_cents = int(int_part) * 100 + int(frac)
+    else:
+        value_cents = int(cleaned) * 100
+    if value_cents <= 0 or value_cents > 100_000_000_00:  # sanidade: 100 milhões
         return None
-    return round(value * 100)
+    return value_cents
+
+
+parse_money = parse_brl
 
 
 @dataclass

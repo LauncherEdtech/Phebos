@@ -7,6 +7,7 @@ import uvicorn
 from .bot import Bot
 from .config import DB_PATH, load_config
 from .matching import Reconciler
+from .models import set_currency
 from .psp import build_psp
 from .server import create_app
 from .storage import Storage
@@ -22,12 +23,14 @@ def build() -> tuple:
     if not config.seller_numbers:
         log.warning("Nenhum número de vendedor configurado (seller_numbers) — "
                     "o bot vai ignorar todas as mensagens.")
+    set_currency(config.currency)
     storage = Storage(DB_PATH)
     psp = build_psp(config.psp)
     wa_client = build_whatsapp(config.whatsapp)
     bot = Bot(storage, psp, config.seller_numbers, config.timezone,
               lang=config.language, public_url=config.public_url,
-              dashboard_secret=config.dashboard_secret)
+              dashboard_secret=config.dashboard_secret,
+              transfer_daily_limit_cents=config.transfer_daily_limit * 100)
     reconciler = Reconciler(storage, lang=config.language)
     app = create_app(bot, reconciler, psp, wa_client,
                      verify_token=config.whatsapp.verify_token,

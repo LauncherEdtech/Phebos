@@ -1,10 +1,10 @@
 # 📖 Guia completo do PixZap
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-07-02 (2ª edição do dia) — multi-idiomas (pt/en/es),
-> painel do vendedor via link mágico (comando `painel`), painel do admin
-> (`/admin`), landing page (`site/index.html`) e plano de negócios
-> (`docs/plano-de-negocios.md`).
+> Última atualização: 2026-07-03 — saldo e transferências pelo chat (com código
+> de confirmação e limite diário), idioma indonésio, moeda configurável por
+> mercado, correção do parser de valores (estilo 150.50), webhooks resilientes
+> e landing page reescrita em 4 idiomas.
 
 ## O que é
 
@@ -29,17 +29,43 @@ A origem do produto está documentada em
 | `cobrar 150,00 João pedido 12` | cria cobrança e devolve o copia-e-cola |
 | `pendentes` | lista cobranças aguardando pagamento + total a receber |
 | `hoje` | resumo do dia: pagas, total recebido, pendentes |
+| `saldo` | saldo disponível na conta do PSP |
+| `transferir 200 pro pix: chave@email.com` | envia um Pix (pede confirmação) |
+| `confirmar 123456` | autoriza a transferência pendente (código vale 5 min) |
 | `cancelar 12` | cancela a cobrança #12 (se ainda pendente) |
 | `painel` | link mágico (24 h) para o painel web de métricas |
 | `ajuda` | mostra o menu |
 
-Valores aceitos: `150`, `150,50`, `R$ 1.500,50`.
+Valores aceitos nos dois estilos: `150`, `150,50`, `R$ 1.500,50`, `150.50`,
+`1,500.50` (o último separador seguido de 1-2 dígitos é o decimal).
 
-## Idiomas
+### Transferências — regras de segurança (nunca enfraquecer)
 
-As respostas do bot e o painel saem no idioma do `language` do config.yaml
-(`pt` padrão, `en`, `es`) — catálogo em `src/pixzap/i18n.py`; os comandos são
-os mesmos em todos os idiomas. Idioma desconhecido cai no pt-BR.
+1. **Desativadas por padrão**: só funcionam com `transfer_daily_limit > 0`
+   no config.yaml (valor na moeda, ex.: `2000` = R$ 2.000/dia).
+2. Toda transferência exige **código de confirmação de 6 dígitos** (expira
+   em 5 min; código errado invalida a operação inteira).
+3. **Limite diário** somado na tabela `transfers` (auditoria completa:
+   valor, chave, protocolo do PSP, quem pediu, quando).
+4. Só números da **allowlist** podem pedir; suportado no PSP fake e Asaas
+   (beta); Mercado Pago ainda não (o bot responde que não suporta).
+
+## Idiomas e moedas por mercado
+
+As respostas do bot e o painel saem no idioma do `language` do config.yaml —
+catálogo em `src/pixzap/i18n.py`; os comandos são os mesmos em todos os
+idiomas e idioma desconhecido cai no pt-BR. As traduções são calibradas por
+mercado (ver `docs/aderencia-mercados.md`):
+
+| Idioma | Mercado-alvo | Como fala | Moeda típica (`currency`) |
+|---|---|---|---|
+| `pt` | Brasil | "Pix" | `BRL` |
+| `en` | Índia, Nigéria, Quênia | "payment/transfer" | `INR`, `NGN`, `KES` |
+| `es` | México, Argentina, Colômbia | "pago/transferencia" | `MXN`, `ARS`, `COP` |
+| `id` | Indonésia | "pembayaran/transfer" | `IDR` |
+
+`currency` controla símbolo e formatação (ex.: `Rp 150.000` sem centavos,
+`₦ 1,500.50` com ponto decimal).
 
 ## Painéis web
 
@@ -173,12 +199,15 @@ rejeição de webhook não autenticado).
 ## Landing page e materiais de venda
 
 - `site/index.html` — landing autocontida (fonte embutida, sem CDN), com
-  demo animada do chat, seletor pt/EN/ES, preços e FAQ. Hospedar em
+  demo animada do chat, seletor PT/EN/ES/ID, preços e FAQ. Hospedar em
   qualquer estático (Cloudflare Pages, GitHub Pages); trocar o número do
   `wa.me` no CTA final antes de publicar.
 - `docs/plano-de-negocios.md` — ICP, pricing, plano 30/60/90 dias para os
   primeiros clientes, fluxos de suporte/manutenção e rota de escala
   multi-tenant.
+- `docs/aderencia-mercados.md` — ranking de aderência por país (Brasil,
+  Índia, Indonésia, Nigéria/Quênia, LATAM) e o que cada mercado mudou nas
+  traduções e moedas do produto.
 
 ## Roadmap curto
 

@@ -56,11 +56,20 @@ def create_app(bot: Bot, reconciler: Reconciler, psp: PspClient,
 
     @app.post("/webhook/whatsapp")
     async def whatsapp_incoming(request: Request):
-        payload = await request.json()
+        # Sempre responder 200 à Meta: erro nosso não pode virar retry em
+        # loop (retries reprocessariam comandos, ex.: cobrança duplicada).
+        try:
+            payload = await request.json()
+        except Exception:
+            log.warning("Webhook do WhatsApp com corpo inválido — ignorado")
+            return {"status": "ignorado"}
         for message in wa_client.parse_incoming(payload):
-            reply = bot.handle(message.sender, message.text)
-            if reply:
-                wa_client.send_text(message.sender, reply)
+            try:
+                reply = bot.handle(message.sender, message.text)
+                if reply:
+                    wa_client.send_text(message.sender, reply)
+            except Exception:
+                log.exception("Erro ao processar mensagem de %s", message.sender)
         return {"status": "ok"}
 
     # ── PSP (pagamentos) ────────────────────────────────────────────
@@ -77,7 +86,10 @@ def create_app(bot: Bot, reconciler: Reconciler, psp: PspClient,
             log.warning("Webhook de PSP rejeitado: autenticação inválida")
             return Response(status_code=401)
 
-        payload = await request.json()
+        try:
+            payload = await request.json()
+        except Exception:
+            return Response(status_code=400)
         event = psp.parse_webhook(payload)
         if event is None:
             return {"status": "ignorado"}  # evento que não confirma dinheiro
@@ -85,7 +97,12 @@ def create_app(bot: Bot, reconciler: Reconciler, psp: PspClient,
         result = reconciler.handle_payment(event, raw=payload)
         log.info("Pagamento %s → %s", event.txid, result.outcome.value)
         if result.seller_message:
-            bot.notify_sellers(wa_client, result.seller_message)
+            try:
+                bot.notify_sellers(wa_client, result.seller_message)
+            except Exception:
+                # A conciliação já foi persistida; falha de envio não pode
+                # derrubar o webhook (o PSP faria retry e cairia no DUPLICATE).
+                log.exception("Falha ao notificar vendedores")
         return {"status": result.outcome.value}
 
     return app

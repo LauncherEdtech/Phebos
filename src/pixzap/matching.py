@@ -7,7 +7,7 @@ de "já paguei", nada de decisão por IA. Só código e centavos exatos.
 
 from .i18n import DEFAULT_LANG, status_label, t
 from .models import (Charge, ChargeStatus, PaymentEvent, PaymentOutcome,
-                     ReconcileResult, format_brl)
+                     ReconcileResult, format_money)
 from .storage import Storage
 
 
@@ -38,7 +38,7 @@ class Reconciler:
                 outcome=PaymentOutcome.UNMATCHED,
                 charge=None,
                 seller_message=t(self.lang, "pay_unmatched",
-                                 amount=format_brl(event.amount_cents),
+                                 amount=format_money(event.amount_cents),
                                  payer=self._payer(event), txid=event.txid),
             )
 
@@ -50,8 +50,8 @@ class Reconciler:
                 charge=charge,
                 seller_message=t(self.lang, "pay_mismatch",
                                  summary=charge.summary(),
-                                 expected=format_brl(charge.amount_cents),
-                                 received=format_brl(event.amount_cents)),
+                                 expected=format_money(charge.amount_cents),
+                                 received=format_money(event.amount_cents)),
             )
 
         # 4. Cobrança já finalizada (pagamento tardio de algo cancelado etc.)
@@ -61,7 +61,7 @@ class Reconciler:
                 outcome=PaymentOutcome.UNMATCHED,
                 charge=charge,
                 seller_message=t(self.lang, "pay_wrong_status",
-                                 amount=format_brl(event.amount_cents),
+                                 amount=format_money(event.amount_cents),
                                  summary=charge.summary(),
                                  status=status_label(self.lang, charge.status.value)),
             )
@@ -73,6 +73,6 @@ class Reconciler:
             outcome=PaymentOutcome.CONFIRMED,
             charge=charge,
             seller_message=t(self.lang, "pay_confirmed",
-                             amount=format_brl(event.amount_cents),
+                             amount=format_money(event.amount_cents),
                              payer=self._payer(event), summary=charge.summary()),
         )

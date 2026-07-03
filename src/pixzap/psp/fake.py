@@ -13,11 +13,24 @@ from .base import PixCharge, PspClient
 
 class FakePsp(PspClient):
     name = "fake"
+    supports_transfers = True
 
-    def __init__(self, webhook_token: str = "teste"):
+    def __init__(self, webhook_token: str = "teste", balance_cents: int = 99000):
         self.webhook_token = webhook_token
         self._counter = itertools.count(1)
         self.charges: dict[str, PixCharge] = {}
+        self.balance_cents = balance_cents
+        self.transfers: list[tuple[int, str]] = []  # (valor, chave)
+
+    def get_balance(self) -> int:
+        return self.balance_cents
+
+    def transfer(self, amount_cents: int, pix_key: str, description: str = "") -> str:
+        if amount_cents > self.balance_cents:
+            raise ValueError("saldo insuficiente")
+        self.balance_cents -= amount_cents
+        self.transfers.append((amount_cents, pix_key))
+        return f"TRF{len(self.transfers):06d}"
 
     def create_charge(self, amount_cents: int, description: str) -> PixCharge:
         txid = f"FAKE{next(self._counter):08d}"

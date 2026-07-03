@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from .i18n import DEFAULT_LANG, status_label, t
-from .models import format_brl
+from .models import format_money
 from .storage import Storage
 
 STYLE = """
@@ -73,9 +73,9 @@ def render_seller_panel(storage: Storage, lang: str = DEFAULT_LANG,
 
     cards = ""
     for label_key, value in (
-        ("panel_received_today", format_brl(sum(c.amount_cents for c in paid_today))),
-        ("panel_received_7d", format_brl(sum(c.amount_cents for c in paid_week))),
-        ("panel_pending", f"{len(pending)} • {format_brl(sum(c.amount_cents for c in pending))}"),
+        ("panel_received_today", format_money(sum(c.amount_cents for c in paid_today))),
+        ("panel_received_7d", format_money(sum(c.amount_cents for c in paid_week))),
+        ("panel_pending", f"{len(pending)} • {format_money(sum(c.amount_cents for c in pending))}"),
     ):
         cards += (f"<div class='card'><div class='label'>{html.escape(t(lang, label_key))}</div>"
                   f"<div class='value'>{html.escape(value)}</div></div>")
@@ -84,7 +84,7 @@ def render_seller_panel(storage: Storage, lang: str = DEFAULT_LANG,
     if charges:
         rows = "".join(
             f"<tr><td>#{c.id}</td><td>{html.escape(c.description or '—')}</td>"
-            f"<td>{html.escape(format_brl(c.amount_cents))}</td>"
+            f"<td>{html.escape(format_money(c.amount_cents))}</td>"
             f"<td>{_badge(c.status.value, status_label(lang, c.status.value))}</td></tr>"
             for c in charges)
         charges_html = f"<table><tr><th>#</th><th></th><th></th><th></th></tr>{rows}</table>"
@@ -96,7 +96,7 @@ def render_seller_panel(storage: Storage, lang: str = DEFAULT_LANG,
         rows = "".join(
             f"<tr><td>{html.escape((p['received_at'] or '')[:10])}</td>"
             f"<td>{html.escape(p['payer_name'] or p['description'] or '—')}</td>"
-            f"<td>{html.escape(format_brl(p['amount_cents']))}</td>"
+            f"<td>{html.escape(format_money(p['amount_cents']))}</td>"
             f"<td>{_badge(p['outcome'], p['outcome'].replace('_', ' '))}</td></tr>"
             for p in payments)
         payments_html = f"<table><tr><th></th><th></th><th></th><th></th></tr>{rows}</table>"
@@ -127,7 +127,7 @@ def render_admin_panel(storage: Storage) -> str:
     cards = ""
     for label, value in (
         ("Cobranças (últimas 100)", str(len(charges))),
-        ("Pagas (valor)", format_brl(total_paid)),
+        ("Pagas (valor)", format_money(total_paid)),
         ("Pendentes", str(len(pending))),
         ("⚠️ Alertas de conciliação", str(len(alerts))),
     ):
@@ -137,7 +137,7 @@ def render_admin_panel(storage: Storage) -> str:
     charge_rows = "".join(
         f"<tr><td>#{c.id}</td><td>{html.escape((c.created_at or '')[:16])}</td>"
         f"<td>{html.escape(c.description or '—')}</td>"
-        f"<td>{html.escape(format_brl(c.amount_cents))}</td>"
+        f"<td>{html.escape(format_money(c.amount_cents))}</td>"
         f"<td>{html.escape(c.provider)}</td><td>{html.escape(c.txid)}</td>"
         f"<td>{_badge(c.status.value, c.status.value)}</td></tr>"
         for c in charges) or "<tr><td class='empty' colspan='7'>vazio</td></tr>"
@@ -145,7 +145,7 @@ def render_admin_panel(storage: Storage) -> str:
     payment_rows = "".join(
         f"<tr><td>{html.escape((p['received_at'] or '')[:16])}</td>"
         f"<td>{html.escape(p['txid'])}</td>"
-        f"<td>{html.escape(format_brl(p['amount_cents']))}</td>"
+        f"<td>{html.escape(format_money(p['amount_cents']))}</td>"
         f"<td>{html.escape(p['payer_name'] or '—')}</td>"
         f"<td>{'#' + str(p['charge_id']) if p['charge_id'] else '—'}</td>"
         f"<td>{_badge(p['outcome'], p['outcome'].replace('_', ' '))}</td></tr>"

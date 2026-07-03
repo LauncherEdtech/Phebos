@@ -22,7 +22,10 @@ def test_all_languages_have_all_keys():
 
 def test_bot_replies_in_english(storage, psp):
     bot = Bot(storage, psp, [SELLER], lang="en")
-    assert "automatic Pix" in bot.handle(SELLER, "ajuda")
+    # en atende Índia/Nigéria/Quênia: fala "payment", nunca "Pix"
+    help_text = bot.handle(SELLER, "ajuda")
+    assert "automatic payment" in help_text
+    assert "Pix" not in help_text.replace("PixZap", "")
     assert "created" in bot.handle(SELLER, "cobrar 100 order 1")
 
 

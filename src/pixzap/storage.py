@@ -34,6 +34,15 @@ CREATE TABLE IF NOT EXISTS payments (
 -- webhook repetido, não um pagamento novo.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_provider_txid_confirmed
     ON payments (provider, txid) WHERE outcome = 'confirmado';
+CREATE TABLE IF NOT EXISTS transfers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    amount_cents INTEGER NOT NULL,
+    pix_key TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    transfer_ref TEXT NOT NULL DEFAULT '',
+    requested_by TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -138,6 +147,25 @@ class Storage:
                 " ORDER BY p.id DESC LIMIT ?", (limit,),
             ).fetchall()
         return [dict(r) for r in rows]
+
+    # ── transferências (auditoria + limite diário) ──────────────────
+    def record_transfer(self, amount_cents: int, pix_key: str, provider: str,
+                        transfer_ref: str, requested_by: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO transfers (amount_cents, pix_key, provider,"
+                " transfer_ref, requested_by, created_at) VALUES (?,?,?,?,?,?)",
+                (amount_cents, pix_key, provider, transfer_ref, requested_by,
+                 utcnow_iso()),
+            )
+
+    def transfers_total_since(self, iso_timestamp: str) -> int:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COALESCE(SUM(amount_cents), 0) AS total FROM transfers"
+                " WHERE created_at >= ?", (iso_timestamp,),
+            ).fetchone()
+        return int(row["total"])
 
     @staticmethod
     def _row_to_charge(row: sqlite3.Row) -> Charge:

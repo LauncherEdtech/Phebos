@@ -12,8 +12,12 @@
     (`verify_webhook` → 401 se falhar); nunca por mensagem/screenshot;
   - conciliação **exata ao centavo** e idempotente (`matching.py`);
   - **allowlist** de vendedores (`seller_numbers`) para comandos do bot;
+  - transferências pelo chat: **desativadas por padrão**, com código de
+    confirmação obrigatório e **limite diário** (`transfer_daily_limit`);
   - dinheiro sempre em **centavos (int)**; segredos só em variáveis de
     ambiente.
+- Toda mensagem ao usuário sai do catálogo `i18n.py` (pt/en/es/id) — nada
+  de string solta; novas chaves entram em TODOS os idiomas (há teste).
 - WhatsApp: usar somente a **Cloud API oficial** (Meta); não introduzir
   bibliotecas não oficiais (Baileys etc.) sem o usuário pedir.
 - Teste com `python -m py_compile src/pixzap/**/*.py` e `python -m pytest

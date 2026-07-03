@@ -5,9 +5,14 @@
 seller_numbers: []
 
 timezone: America/Sao_Paulo
-language: pt            # idioma das respostas do bot: pt | en | es
+language: pt            # idioma das respostas do bot: pt | en | es | id
+currency: BRL           # moeda exibida: BRL | MXN | ARS | COP | NGN | KES | INR | IDR | USD
 public_url: ""          # URL pública https (habilita o comando "painel")
 port: 8000
+
+# Limite diário do comando "transferir" (na moeda; ex.: 2000 = R$ 2.000,00).
+# 0 = transferências pelo chat DESATIVADAS (padrão seguro).
+transfer_daily_limit: 0
 
 whatsapp:
   provider: fake        # fake (dev) | cloud (WhatsApp Business Cloud API oficial)
