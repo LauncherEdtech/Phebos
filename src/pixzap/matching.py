@@ -5,14 +5,19 @@ webhook autenticado do PSP confirma o dinheiro. Nada de screenshot, nada
 de "já paguei", nada de decisão por IA. Só código e centavos exatos.
 """
 
+from .i18n import DEFAULT_LANG, status_label, t
 from .models import (Charge, ChargeStatus, PaymentEvent, PaymentOutcome,
                      ReconcileResult, format_brl)
 from .storage import Storage
 
 
 class Reconciler:
-    def __init__(self, storage: Storage):
+    def __init__(self, storage: Storage, lang: str = DEFAULT_LANG):
         self.storage = storage
+        self.lang = lang
+
+    def _payer(self, event: PaymentEvent) -> str:
+        return t(self.lang, "payer_from", name=event.payer_name) if event.payer_name else ""
 
     def handle_payment(self, event: PaymentEvent, raw: dict) -> ReconcileResult:
         """Processa um pagamento confirmado pelo PSP e devolve o veredito."""
@@ -29,15 +34,12 @@ class Reconciler:
         # 2. Pix caiu sem cobrança associada → avisa, mas registra
         if charge is None:
             self.storage.record_payment(event, PaymentOutcome.UNMATCHED.value, None, raw)
-            payer = f" de {event.payer_name}" if event.payer_name else ""
             return ReconcileResult(
                 outcome=PaymentOutcome.UNMATCHED,
                 charge=None,
-                seller_message=(
-                    f"⚠️ Recebi um Pix de {format_brl(event.amount_cents)}{payer} "
-                    f"sem cobrança associada (txid {event.txid}). "
-                    "Confira no app do banco antes de entregar qualquer pedido."
-                ),
+                seller_message=t(self.lang, "pay_unmatched",
+                                 amount=format_brl(event.amount_cents),
+                                 payer=self._payer(event), txid=event.txid),
             )
 
         # 3. Valor divergente → NÃO quita a cobrança; alerta o vendedor
@@ -46,12 +48,10 @@ class Reconciler:
             return ReconcileResult(
                 outcome=PaymentOutcome.MISMATCH,
                 charge=charge,
-                seller_message=(
-                    f"⚠️ Valor divergente na cobrança {charge.summary()}: "
-                    f"esperado {format_brl(charge.amount_cents)}, "
-                    f"recebido {format_brl(event.amount_cents)}. "
-                    "A cobrança segue PENDENTE — confira antes de entregar."
-                ),
+                seller_message=t(self.lang, "pay_mismatch",
+                                 summary=charge.summary(),
+                                 expected=format_brl(charge.amount_cents),
+                                 received=format_brl(event.amount_cents)),
             )
 
         # 4. Cobrança já finalizada (pagamento tardio de algo cancelado etc.)
@@ -60,22 +60,19 @@ class Reconciler:
             return ReconcileResult(
                 outcome=PaymentOutcome.UNMATCHED,
                 charge=charge,
-                seller_message=(
-                    f"⚠️ Pix de {format_brl(event.amount_cents)} recebido para a "
-                    f"cobrança {charge.summary()}, que está '{charge.status.value}'. "
-                    "Confira manualmente."
-                ),
+                seller_message=t(self.lang, "pay_wrong_status",
+                                 amount=format_brl(event.amount_cents),
+                                 summary=charge.summary(),
+                                 status=status_label(self.lang, charge.status.value)),
             )
 
         # 5. Tudo bateu → confirma
         self.storage.record_payment(event, PaymentOutcome.CONFIRMED.value, charge.id, raw)
         self.storage.mark_paid(charge.id)
-        payer = f" de {event.payer_name}" if event.payer_name else ""
         return ReconcileResult(
             outcome=PaymentOutcome.CONFIRMED,
             charge=charge,
-            seller_message=(
-                f"✅ Pix de {format_brl(event.amount_cents)}{payer} confirmado!\n"
-                f"Cobrança {charge.summary()} está PAGA. Pode liberar o pedido. 🎉"
-            ),
+            seller_message=t(self.lang, "pay_confirmed",
+                             amount=format_brl(event.amount_cents),
+                             payer=self._payer(event), summary=charge.summary()),
         )

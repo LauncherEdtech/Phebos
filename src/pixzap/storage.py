@@ -101,6 +101,13 @@ class Storage:
             ).fetchall()
         return [self._row_to_charge(r) for r in rows]
 
+    def recent_charges(self, limit: int = 50) -> List[Charge]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM charges ORDER BY id DESC LIMIT ?", (limit,),
+            ).fetchall()
+        return [self._row_to_charge(r) for r in rows]
+
     # ── pagamentos ──────────────────────────────────────────────────
     def record_payment(self, event: PaymentEvent, outcome: str,
                        charge_id: Optional[int], raw: dict) -> None:
@@ -120,6 +127,17 @@ class Storage:
                 (provider, txid),
             ).fetchone()
         return row is not None
+
+    def recent_payments(self, limit: int = 50) -> List[dict]:
+        """Últimos pagamentos recebidos (para os painéis)."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT p.txid, p.amount_cents, p.provider, p.payer_name,"
+                " p.outcome, p.charge_id, p.received_at, c.description"
+                " FROM payments p LEFT JOIN charges c ON c.id = p.charge_id"
+                " ORDER BY p.id DESC LIMIT ?", (limit,),
+            ).fetchall()
+        return [dict(r) for r in rows]
 
     @staticmethod
     def _row_to_charge(row: sqlite3.Row) -> Charge:

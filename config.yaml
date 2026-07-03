@@ -5,6 +5,8 @@
 seller_numbers: []
 
 timezone: America/Sao_Paulo
+language: pt            # idioma das respostas do bot: pt | en | es
+public_url: ""          # URL pública https (habilita o comando "painel")
 port: 8000
 
 whatsapp:

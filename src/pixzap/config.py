@@ -46,9 +46,28 @@ class PixzapConfig:
     # ignoradas — regra de segurança, nunca enfraquecer.
     seller_numbers: List[str] = field(default_factory=list)
     timezone: str = "America/Sao_Paulo"
+    language: str = "pt"              # idioma das respostas do bot: pt | en | es
+    public_url: str = ""              # URL pública (https) — habilita o painel web
     port: int = 8000
+    admin_token: str = ""             # env: PIXZAP_ADMIN_TOKEN (habilita /admin)
+    dashboard_secret: str = ""        # env: PIXZAP_DASHBOARD_SECRET (ou gerado)
     whatsapp: WhatsAppConfig = field(default_factory=WhatsAppConfig)
     psp: PspConfig = field(default_factory=PspConfig)
+
+
+def _dashboard_secret() -> str:
+    """Segredo dos links mágicos: env ou gerado uma vez e persistido."""
+    env_secret = os.environ.get("PIXZAP_DASHBOARD_SECRET", "")
+    if env_secret:
+        return env_secret
+    secret_file = DATA_DIR / "dashboard.secret"
+    if secret_file.exists():
+        return secret_file.read_text(encoding="utf-8").strip()
+    import secrets
+    generated = secrets.token_urlsafe(32)
+    secret_file.parent.mkdir(parents=True, exist_ok=True)
+    secret_file.write_text(generated, encoding="utf-8")
+    return generated
 
 
 def load_config(path: str | None = None) -> PixzapConfig:
@@ -63,7 +82,11 @@ def load_config(path: str | None = None) -> PixzapConfig:
     cfg = PixzapConfig(
         seller_numbers=[str(n) for n in raw.get("seller_numbers", [])],
         timezone=raw.get("timezone", "America/Sao_Paulo"),
+        language=str(raw.get("language", "pt")),
+        public_url=str(raw.get("public_url", "")),
         port=int(raw.get("port", 8000)),
+        admin_token=os.environ.get("PIXZAP_ADMIN_TOKEN", ""),
+        dashboard_secret=_dashboard_secret(),
         whatsapp=WhatsAppConfig(
             provider=wa_raw.get("provider", "fake"),
             phone_number_id=str(wa_raw.get("phone_number_id", "")),

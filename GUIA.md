@@ -1,9 +1,10 @@
 # 📖 Guia completo do PixZap
 
 > **Este arquivo é o manual oficial do sistema e é atualizado a cada alteração.**
-> Última atualização: 2026-07-02 — nasce o PixZap: o repositório deixa de ser o
-> bot de trading (legado removido; histórico preservado no git) e passa a ser o
-> bot de confirmação/conciliação de Pix para vendas pelo WhatsApp.
+> Última atualização: 2026-07-02 (2ª edição do dia) — multi-idiomas (pt/en/es),
+> painel do vendedor via link mágico (comando `painel`), painel do admin
+> (`/admin`), landing page (`site/index.html`) e plano de negócios
+> (`docs/plano-de-negocios.md`).
 
 ## O que é
 
@@ -29,9 +30,27 @@ A origem do produto está documentada em
 | `pendentes` | lista cobranças aguardando pagamento + total a receber |
 | `hoje` | resumo do dia: pagas, total recebido, pendentes |
 | `cancelar 12` | cancela a cobrança #12 (se ainda pendente) |
+| `painel` | link mágico (24 h) para o painel web de métricas |
 | `ajuda` | mostra o menu |
 
 Valores aceitos: `150`, `150,50`, `R$ 1.500,50`.
+
+## Idiomas
+
+As respostas do bot e o painel saem no idioma do `language` do config.yaml
+(`pt` padrão, `en`, `es`) — catálogo em `src/pixzap/i18n.py`; os comandos são
+os mesmos em todos os idiomas. Idioma desconhecido cai no pt-BR.
+
+## Painéis web
+
+- **Vendedor** — comando `painel` no chat gera um link assinado
+  (`/painel?token=...`, HMAC com validade de 24 h, segredo em
+  `PIXZAP_DASHBOARD_SECRET` ou gerado e persistido em `dashboard.secret`).
+  Mostra: recebido hoje/7 dias, pendências, cobranças recentes e pagamentos
+  com o veredito da conciliação. Requer `public_url` no config.yaml.
+- **Admin** — `/admin?token=<PIXZAP_ADMIN_TOKEN>`: todas as cobranças e
+  webhooks recebidos, com destaque para alertas (valor divergente / Pix sem
+  cobrança). Sem o env definido, a rota responde 403 sempre.
 
 ## Regras de segurança (nunca enfraquecer sem pedido explícito)
 
@@ -136,6 +155,8 @@ O banco (`pixzap.db`) fica no volume `pixzap-data`. O serviço expõe a porta
 | `GET /webhook/whatsapp` | handshake de verificação da Meta |
 | `POST /webhook/whatsapp` | mensagens recebidas → comandos do bot |
 | `POST /webhook/psp` | eventos de pagamento → conciliação |
+| `GET /painel?token=...` | painel do vendedor (link mágico) |
+| `GET /admin?token=...` | registros do administrador |
 
 ## Testes
 
@@ -149,12 +170,24 @@ idempotência, valor divergente, Pix órfão, cobrança cancelada), comandos do
 bot (incluindo allowlist) e fluxo end-to-end pelo servidor (incluindo
 rejeição de webhook não autenticado).
 
+## Landing page e materiais de venda
+
+- `site/index.html` — landing autocontida (fonte embutida, sem CDN), com
+  demo animada do chat, seletor pt/EN/ES, preços e FAQ. Hospedar em
+  qualquer estático (Cloudflare Pages, GitHub Pages); trocar o número do
+  `wa.me` no CTA final antes de publicar.
+- `docs/plano-de-negocios.md` — ICP, pricing, plano 30/60/90 dias para os
+  primeiros clientes, fluxos de suporte/manutenção e rota de escala
+  multi-tenant.
+
 ## Roadmap curto
 
 - [ ] Validar adaptadores Asaas e Mercado Pago no sandbox real.
+- [ ] Onboarding self-service pelo próprio chat (hoje: white glove).
+- [ ] Multi-tenant (tabela sellers, credenciais de PSP por loja).
 - [ ] Expiração automática de cobranças antigas (lembrete ao cliente).
-- [ ] Multi-vendedor com onboarding self-service (hoje: 1 instância = 1 loja).
-- [ ] Página/relatório semanal de recebimentos (CSV já sai do SQLite).
+- [ ] Alertas de erro do sistema no WhatsApp do admin.
+- [ ] Exportação CSV pelo painel.
 
 ## Legado
 

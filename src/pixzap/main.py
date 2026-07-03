@@ -25,10 +25,15 @@ def build() -> tuple:
     storage = Storage(DB_PATH)
     psp = build_psp(config.psp)
     wa_client = build_whatsapp(config.whatsapp)
-    bot = Bot(storage, psp, config.seller_numbers, config.timezone)
-    reconciler = Reconciler(storage)
+    bot = Bot(storage, psp, config.seller_numbers, config.timezone,
+              lang=config.language, public_url=config.public_url,
+              dashboard_secret=config.dashboard_secret)
+    reconciler = Reconciler(storage, lang=config.language)
     app = create_app(bot, reconciler, psp, wa_client,
-                     verify_token=config.whatsapp.verify_token)
+                     verify_token=config.whatsapp.verify_token,
+                     dashboard_secret=config.dashboard_secret,
+                     admin_token=config.admin_token,
+                     lang=config.language, tz_name=config.timezone)
     return app, config
 
 
